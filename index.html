@@ -22,7 +22,7 @@
             display: flex;
             flex-direction: column;
             height: 100vh;
-            overflow: hidden; /* 防止出現滾動條 */
+            overflow: hidden;
         }
         /* 頂部導覽列 */
         header {
@@ -92,9 +92,9 @@
         .container {
             display: none;
             width: 100%;
-            max-width: 1000px; /* 縮小最大寬度 */
+            max-width: 1000px; 
             height: 100%;
-            max-height: 550px; /* 限制最大高度避免溢出 */
+            max-height: 550px; 
             gap: 20px;
         }
         .container.active {
@@ -123,12 +123,17 @@
             margin-bottom: 15px;
         }
         .main-question {
-            font-size: 85px; /* 從 130px 縮小至 85px，適應筆電螢幕 */
+            font-size: 85px; 
             font-weight: 900;
             color: var(--text-dark);
             margin: 0;
             line-height: 1.2;
             text-align: center;
+        }
+        /* 將注音符號特別標示顏色 */
+        .zhuyin-highlight {
+            color: #E74C3C;
+            font-size: 0.9em;
         }
         .progress-text {
             color: var(--theme-green);
@@ -204,8 +209,8 @@
             background: white;
             border: 4px solid var(--card-border);
             border-radius: 20px;
-            width: 300px; /* 從 400px 縮小至 300px */
-            height: 300px; /* 從 400px 縮小至 300px */
+            width: 300px; 
+            height: 300px; 
             position: relative;
             box-shadow: 0 8px 15px rgba(0,0,0,0.05);
             overflow: hidden;
@@ -225,7 +230,7 @@
         .writing-actions {
             display: flex;
             gap: 15px;
-            width: 300px; /* 與手寫區寬度對齊 */
+            width: 300px; 
         }
         .action-btn {
             flex: 1;
@@ -251,11 +256,12 @@
             border-radius: 25px;
             padding: 40px;
             text-align: center;
+            overflow-y: auto; /* 若錯題太多可滾動 */
         }
         .summary-title { font-size: 36px; color: var(--theme-green); font-weight: bold; margin-bottom: 15px; }
         .mistakes-list { display: flex; flex-wrap: wrap; gap: 15px; justify-content: center; margin: 25px 0; max-width: 800px; }
         .mistake-item { background: #ffeaa7; color: #d35400; padding: 12px 20px; border-radius: 12px; font-size: 24px; font-weight: bold; }
-        .btn-restart { background: var(--theme-green); color: white; padding: 12px 30px; font-size: 20px; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; }
+        .btn-restart { background: var(--theme-green); color: white; padding: 12px 30px; font-size: 20px; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; flex-shrink: 0; }
     </style>
 </head>
 <body>
@@ -290,22 +296,22 @@
         <!-- 字形練習區 -->
         <div id="writing-container" class="container">
             <div class="left-card">
-                <div class="instruction-text">請寫出正確的字形</div>
+                <div class="instruction-text">請根據注音寫出正確的字形</div>
                 <div class="main-question" id="writing-q"></div>
                 <div class="progress-text" id="writing-progress"></div>
             </div>
             <div class="right-writing">
                 <div class="writing-modes">
-                    <button id="mode-hint" class="active" onclick="setWritingMode('hint')">提示描紅</button>
-                    <button id="mode-blank" onclick="setWritingMode('blank')">空白挑戰</button>
+                    <button id="mode-blank" class="active" onclick="setWritingMode('blank')">空白挑戰</button>
+                    <button id="mode-hint" onclick="setWritingMode('hint')">提示描紅</button>
                 </div>
                 <div class="writing-area-wrapper">
-                    <div id="hanzi-writer-target"></div>
-                    <canvas id="blank-canvas" width="300" height="300" style="display: none; touch-action: none;"></canvas>
+                    <div id="hanzi-writer-target" style="display: none;"></div>
+                    <canvas id="blank-canvas" width="300" height="300" style="touch-action: none;"></canvas>
                 </div>
                 <div class="writing-actions">
                     <button class="action-btn btn-clear" onclick="clearCanvas()">清除重寫</button>
-                    <button class="action-btn btn-recognize" id="btn-recognize" style="display: none;" onclick="recognizeHandwriting()">辨識送出</button>
+                    <button class="action-btn btn-recognize" id="btn-recognize" onclick="recognizeHandwriting()">辨識送出</button>
                 </div>
             </div>
         </div>
@@ -324,7 +330,8 @@
         let totalScore = 0;
         let state = {
             pinyin: { index: 0, wrongItems: new Set(), answered: false },
-            writing: { index: 0, wrongItems: new Set(), mode: 'hint' }
+            // 注意：這裡將預設模式改為 'blank' (空白挑戰)
+            writing: { index: 0, wrongItems: new Set(), mode: 'blank' } 
         };
         let writer = null;
 
@@ -352,8 +359,13 @@
                 showSummary();
             } else {
                 document.getElementById(tab + '-container').classList.add('active');
-                if (tab === 'pinyin') loadPinyinQuestion();
-                else initWritingQuestion();
+                if (tab === 'pinyin') {
+                    loadPinyinQuestion();
+                } else {
+                    // 切換到字形時，確保介面也是預設的 blank
+                    setWritingMode(state.writing.mode);
+                    initWritingQuestion();
+                }
             }
             updateProgress();
         }
@@ -380,7 +392,11 @@
                     showSummary();
                 } else {
                     if (currentTab === 'pinyin') loadPinyinQuestion();
-                    else initWritingQuestion();
+                    else {
+                        // 每換下一題，自動切回空白挑戰，鼓勵學生自己寫
+                        setWritingMode('blank');
+                        initWritingQuestion();
+                    }
                     updateProgress();
                 }
             }, 800);
@@ -474,9 +490,9 @@
             if(state.writing.index >= writingData.length) return;
             const data = writingData[state.writing.index];
             
-            // 替換中括號內的字為 （ ）
-            const displayQ = data.q.replace(/\[.*?\]/, '（ ）');
-            document.getElementById('writing-q').innerText = displayQ;
+            // 替換括號內的注音並加上紅色高亮，讓學生一眼看出
+            const displayQ = data.q.replace(/\[(.*?)\]/, '<span class="zhuyin-highlight">（$1）</span>');
+            document.getElementById('writing-q').innerHTML = displayQ;
 
             if (state.writing.mode === 'hint') {
                 document.getElementById('hanzi-writer-target').innerHTML = '';
@@ -487,12 +503,9 @@
                 });
                 writer.quiz({
                     onComplete: function() {
-                        totalScore += 10;
+                        totalScore += 5; // 看提示寫對只給 5 分
                         document.getElementById('score-display').innerText = totalScore;
                         goNextQuestion();
-                    },
-                    onMistake: function() {
-                        state.writing.wrongItems.add(`${data.q.replace(/\[|\]/g, '')} -> ${data.ans}`);
                     }
                 });
             } else {
@@ -558,6 +571,7 @@
             if (writer && state.writing.mode === 'hint') writer.quiz();
         }
 
+        // 強化的多重 API 備援連線機制
         async function recognizeHandwriting() {
             if (strokesData.length === 0) {
                 alert('請先在空白處寫字喔！');
@@ -578,32 +592,57 @@
                 }]
             };
 
+            const targetUrl = 'https://inputtools.google.com/request?ime=handwriting&app=mobilesearch&cs=1&oe=UTF-8';
+            
+            // 使用多個不同的免費 Proxy 避免 GitHub Pages 被擋
+            const proxies = [
+                'https://api.allorigins.win/raw?url=',
+                'https://corsproxy.io/?'
+            ];
+
+            let json = null;
+
+            for (let proxy of proxies) {
+                try {
+                    const fetchUrl = proxy + encodeURIComponent(targetUrl);
+                    const response = await fetch(fetchUrl, {
+                        method: 'POST',
+                        headers: { 
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(payload)
+                    });
+                    
+                    if (response.ok) {
+                        json = await response.json();
+                        break; 
+                    }
+                } catch (error) {
+                    console.warn('Proxy 連線失敗，切換備用連線...', proxy);
+                }
+            }
+
+            btnRecog.disabled = false;
+            btnRecog.innerText = '辨識送出';
+
+            if (!json) {
+                alert('伺服器目前忙碌中，請稍等幾秒後再點一次「辨識送出」。');
+                return;
+            }
+
             try {
-                const targetUrl = 'https://inputtools.google.com/request?ime=handwriting&app=mobilesearch&cs=1&oe=UTF-8';
-                const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(targetUrl);
-                
-                const response = await fetch(proxyUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                
-                const json = await response.json();
                 const results = json[1][0][1];
-                
                 if (results.includes(data.ans)) {
-                    totalScore += 15; // 空白挑戰成功給高分
+                    totalScore += 15; // 空白挑戰成功給 15 分
                     document.getElementById('score-display').innerText = totalScore;
                     goNextQuestion();
                 } else {
                     alert(`認出來是：${results.slice(0, 3).join(', ')}。請清除重寫！`);
                     state.writing.wrongItems.add(`${data.q.replace(/\[|\]/g, '')} -> ${data.ans}`);
                 }
-            } catch (error) {
-                alert('網路連線有問題，請再試一次。');
-            } finally {
-                btnRecog.disabled = false;
-                btnRecog.innerText = '辨識送出';
+            } catch (err) {
+                console.error(err);
+                alert('解析失敗，請重試。');
             }
         }
     </script>
