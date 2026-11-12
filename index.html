@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>樹林國小 字音字形練習</title>
+    <script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.5/dist/hanzi-writer.min.js"></script>
+    <script src="questions.js"></script>
+    <style>
+        :root {
+            --theme-green: #20A045;
+            --bg-color: #F0F7F2;
+            --card-border: #80D08A;
+            --text-dark: #1A2B3C;
+            --text-gray: #7A8B9C;
+            --gold: #FFC107;
+        }
+        body {
+            font-family: 'PingFang TC', '微軟正黑體', sans-serif;
+            margin: 0;
+            background-color: var(--bg-color);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+        /* 頂部導覽列 */
+        header {
+            background-color: var(--theme-green);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .header-title {
+            color: white;
+            font-size: 28px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .mode-toggle {
+            display: flex;
+            background: rgba(255,255,255,0.2);
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.5);
+        }
+        .mode-toggle button {
+            background: transparent;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .mode-toggle button.active {
+            background: white;
+            color: var(--theme-green);
+        }
+        .score-badge {
+            background-color: var(--gold);
+            color: #A06000;
+            font-weight: bold;
+            font-size: 20px;
+            padding: 8px 20px;
+            border-radius: 25px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        
+        /* 主要內容區 */
+        main {
+            flex: 1;
+            padding: 30px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .container {
+            display: none;
+            width: 100%;
+            max-width: 1200px;
+            height: 100%;
+            gap: 30px;
+        }
+        .container.active {
+            display: flex;
+        }
+        
+        /* 左側題目卡 */
+        .left-card {
+            flex: 1.2;
+            background: white;
+            border: 5px solid var(--card-border);
+            border-radius: 30px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+            position: relative;
+        }
+        .instruction-text {
+            color: var(--text-gray);
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+        .main-question {
+            font-size: 130px;
+            font-weight: 900;
+            color: var(--text-dark);
+            margin: 0;
+            line-height: 1.2;
+        }
+        .progress-text {
+            color: var(--theme-green);
+            font-size: 22px;
+            font-weight: bold;
+            margin-top: 40px;
+        }
+
+        /* 右側讀音選項區 (2x2 Grid) */
+        .right-grid {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            gap: 20px;
+        }
+        .option-btn {
+            background: white;
+            border: 5px solid var(--card-border);
+            border-radius: 25px;
+            font-size: 40px;
+            font-weight: bold;
+            color: var(--theme-green);
+            cursor: pointer;
+            transition: 0.2s;
+            box-shadow: 0 8px 15px rgba(0,0,0,0.05);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .option-btn:hover {
+            transform: scale(1.02);
+            background: #f8fcf8;
+        }
+        .option-btn.correct { background: var(--theme-green); color: white; border-color: var(--theme-green); }
+        .option-btn.wrong { background: #E74C3C; color: white; border-color: #E74C3C; animation: shake 0.4s; }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        /* 右側字形手寫區 */
+        .right-writing {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            align-items: center;
+            justify-content: center;
+        }
+        .writing-modes {
+            display: flex;
+            gap: 15px;
+        }
+        .writing-modes button {
+            padding: 10px 25px;
+            font-size: 20px;
+            font-weight: bold;
+            border: 3px solid var(--card-border);
+            border-radius: 15px;
+            background: white;
+            color: var(--theme-green);
+            cursor: pointer;
+        }
+        .writing-modes button.active {
+            background: var(--theme-green);
+            color: white;
+            border-color: var(--theme-green);
+        }
+        .writing-area-wrapper {
+            background: white;
+            border: 5px solid var(--card-border);
+            border-radius: 30px;
+            width: 400px;
+            height: 400px;
+            position: relative;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+            overflow: hidden;
+            background-image: 
+                linear-gradient(45deg, transparent 49%, rgba(128,208,138,0.3) 49%, rgba(128,208,138,0.3) 51%, transparent 51%),
+                linear-gradient(-45deg, transparent 49%, rgba(128,208,138,0.3) 49%, rgba(128,208,138,0.3) 51%, transparent 51%),
+                linear-gradient(to right, transparent 49.5%, rgba(128,208,138,0.6) 49.5%, rgba(128,208,138,0.6) 50.5%, transparent 50.5%),
+                linear-gradient(to bottom, transparent 49.5%, rgba(128,208,138,0.6) 49.5%, rgba(128,208,138,0.6) 50.5%, transparent 50.5%);
+        }
+        #hanzi-writer-target, #blank-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        .writing-actions {
+            display: flex;
+            gap: 15px;
+            width: 400px;
+        }
+        .action-btn {
+            flex: 1;
+            padding: 15px;
+            font-size: 22px;
+            font-weight: bold;
+            border: none;
+            border-radius: 15px;
+            cursor: pointer;
+            color: white;
+            transition: 0.2s;
+        }
+        .btn-clear { background: #95a5a6; }
+        .btn-recognize { background: #F39C12; }
+        
+        /* 結算畫面 */
+        .summary-view {
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: white;
+            border: 5px solid var(--card-border);
+            border-radius: 30px;
+            padding: 50px;
+            text-align: center;
+        }
+        .summary-title { font-size: 48px; color: var(--theme-green); font-weight: bold; margin-bottom: 20px; }
+        .mistakes-list { display: flex; flex-wrap: wrap; gap: 15px; justify-content: center; margin: 30px 0; max-width: 800px; }
+        .mistake-item { background: #ffeaa7; color: #d35400; padding: 15px 25px; border-radius: 15px; font-size: 28px; font-weight: bold; }
+        .btn-restart { background: var(--theme-green); color: white; padding: 15px 40px; font-size: 24px; border: none; border-radius: 15px; font-weight: bold; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="header-title">✏️ 樹林國小 字音字形練習</div>
+        <div class="header-controls">
+            <div class="mode-toggle">
+                <button id="tab-pinyin" class="active" onclick="switchTab('pinyin')">字音練習</button>
+                <button id="tab-writing" onclick="switchTab('writing')">字形練習</button>
+            </div>
+            <div class="score-badge">⭐ 總分: <span id="score-display">0</span></div>
+        </div>
+    </header>
+
+    <main>
+        <!-- 讀音練習區 -->
+        <div id="pinyin-container" class="container active">
+            <div class="left-card">
+                <div class="instruction-text">請選出正確的讀音</div>
+                <div class="main-question" id="pinyin-q"></div>
+                <div class="progress-text" id="pinyin-progress"></div>
+            </div>
+            <div class="right-grid">
+                <button class="option-btn" id="pinyin-opt0" onclick="checkPinyin(0)"></button>
+                <button class="option-btn" id="pinyin-opt1" onclick="checkPinyin(1)"></button>
+                <button class="option-btn" id="pinyin-opt2" onclick="checkPinyin(2)"></button>
+                <button class="option-btn" id="pinyin-opt3" onclick="checkPinyin(3)"></button>
+            </div>
+        </div>
+
+        <!-- 字形練習區 -->
+        <div id="writing-container" class="container">
+            <div class="left-card">
+                <div class="instruction-text">請寫出正確的字形</div>
+                <div class="main-question" id="writing-q"></div>
+                <div class="progress-text" id="writing-progress"></div>
+            </div>
+            <div class="right-writing">
+                <div class="writing-modes">
+                    <button id="mode-hint" class="active" onclick="setWritingMode('hint')">提示描紅</button>
+                    <button id="mode-blank" onclick="setWritingMode('blank')">空白挑戰</button>
+                </div>
+                <div class="writing-area-wrapper">
+                    <div id="hanzi-writer-target"></div>
+                    <canvas id="blank-canvas" width="400" height="400" style="display: none; touch-action: none;"></canvas>
+                </div>
+                <div class="writing-actions">
+                    <button class="action-btn btn-clear" onclick="clearCanvas()">清除重寫</button>
+                    <button class="action-btn btn-recognize" id="btn-recognize" style="display: none;" onclick="recognizeHandwriting()">辨識送出</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 結算畫面 -->
+        <div id="summary-container" class="container summary-view">
+            <div class="summary-title" id="summary-title"></div>
+            <div class="instruction-text" style="font-size: 32px;" id="summary-score-text"></div>
+            <div class="mistakes-list" id="mistakes-list"></div>
+            <button class="btn-restart" onclick="restartCurrentTab()">重新開始本大題</button>
+        </div>
+    </main>
+
+    <script>
+        let currentTab = 'pinyin';
+        let totalScore = 0;
+        let state = {
+            pinyin: { index: 0, wrongItems: new Set(), answered: false },
+            writing: { index: 0, wrongItems: new Set(), mode: 'hint' }
+        };
+        let writer = null;
+
+        window.onload = () => {
+            if (typeof pinyinData === 'undefined' || typeof writingData === 'undefined') {
+                alert("找不到題庫檔案 questions.js，請確認檔案位置。");
+                return;
+            }
+            loadPinyinQuestion();
+            updateProgress();
+        };
+
+        function switchTab(tab) {
+            currentTab = tab;
+            document.getElementById('tab-pinyin').classList.toggle('active', tab === 'pinyin');
+            document.getElementById('tab-writing').classList.toggle('active', tab === 'writing');
+            
+            const isFinished = state[tab].index >= (tab === 'pinyin' ? pinyinData.length : writingData.length);
+            
+            document.getElementById('pinyin-container').classList.remove('active');
+            document.getElementById('writing-container').classList.remove('active');
+            document.getElementById('summary-container').classList.remove('active');
+
+            if (isFinished) {
+                showSummary();
+            } else {
+                document.getElementById(tab + '-container').classList.add('active');
+                if (tab === 'pinyin') loadPinyinQuestion();
+                else initWritingQuestion();
+            }
+            updateProgress();
+        }
+
+        function updateProgress() {
+            const data = currentTab === 'pinyin' ? pinyinData : writingData;
+            const current = state[currentTab].index;
+            const remaining = Math.max(0, data.length - current);
+            
+            const progEl = document.getElementById(currentTab + '-progress');
+            if (progEl) {
+                progEl.innerText = `第 ${current + 1} 題 / 共 ${data.length} 題`;
+            }
+            document.getElementById('score-display').innerText = totalScore;
+        }
+
+        function goNextQuestion() {
+            state[currentTab].index++;
+            const data = currentTab === 'pinyin' ? pinyinData : writingData;
+            
+            setTimeout(() => {
+                if (state[currentTab].index >= data.length) {
+                    document.getElementById('pinyin-container').classList.remove('active');
+                    document.getElementById('writing-container').classList.remove('active');
+                    showSummary();
+                } else {
+                    if (currentTab === 'pinyin') loadPinyinQuestion();
+                    else initWritingQuestion();
+                    updateProgress();
+                }
+            }, 800);
+        }
+
+        function showSummary() {
+            document.getElementById('summary-container').classList.add('active');
+            const title = document.getElementById('summary-title');
+            const list = document.getElementById('mistakes-list');
+            list.innerHTML = '';
+            
+            const wrongSet = state[currentTab].wrongItems;
+            title.innerText = currentTab === 'pinyin' ? '字音練習完成！' : '字形練習完成！';
+            document.getElementById('summary-score-text').innerText = `目前總分：${totalScore} 分`;
+            
+            if (wrongSet.size === 0) {
+                list.innerHTML = '<div class="instruction-text" style="color:#20A045;">太厲害了！全部答對！🎉</div>';
+            } else {
+                wrongSet.forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = 'mistake-item';
+                    div.innerText = item;
+                    list.appendChild(div);
+                });
+            }
+        }
+
+        function restartCurrentTab() {
+            state[currentTab].index = 0;
+            state[currentTab].wrongItems.clear();
+            switchTab(currentTab); 
+        }
+
+        // --- 讀音練習邏輯 ---
+        function loadPinyinQuestion() {
+            if(state.pinyin.index >= pinyinData.length) return;
+            const data = pinyinData[state.pinyin.index];
+            document.getElementById('pinyin-q').innerText = data.q;
+            state.pinyin.answered = false;
+            
+            for(let i=0; i<4; i++) {
+                const btn = document.getElementById('pinyin-opt' + i);
+                btn.innerText = data.opts[i];
+                btn.className = 'option-btn';
+            }
+        }
+
+        function checkPinyin(selected) {
+            if(state.pinyin.answered) return;
+            
+            const data = pinyinData[state.pinyin.index];
+            const btn = document.getElementById('pinyin-opt' + selected);
+            
+            if (selected === data.ans) {
+                btn.classList.add('correct');
+                totalScore += 10;
+                document.getElementById('score-display').innerText = totalScore;
+                state.pinyin.answered = true;
+                goNextQuestion();
+            } else {
+                btn.classList.add('wrong');
+                state.pinyin.wrongItems.add(`${data.q} (應為: ${data.opts[data.ans]})`);
+                setTimeout(() => btn.classList.remove('wrong'), 500);
+            }
+        }
+
+        // --- 字形練習邏輯 ---
+        function setWritingMode(mode) {
+            state.writing.mode = mode;
+            document.getElementById('mode-hint').classList.toggle('active', mode === 'hint');
+            document.getElementById('mode-blank').classList.toggle('active', mode === 'blank');
+            
+            const target = document.getElementById('hanzi-writer-target');
+            const canvas = document.getElementById('blank-canvas');
+            const btnRecog = document.getElementById('btn-recognize');
+
+            if (mode === 'hint') {
+                target.style.display = 'block';
+                canvas.style.display = 'none';
+                btnRecog.style.display = 'none';
+                if (state.writing.index < writingData.length) initWritingQuestion();
+            } else {
+                target.style.display = 'none';
+                canvas.style.display = 'block';
+                btnRecog.style.display = 'inline-block';
+                clearCanvas();
+            }
+        }
+
+        function initWritingQuestion() {
+            if(state.writing.index >= writingData.length) return;
+            const data = writingData[state.writing.index];
+            document.getElementById('writing-q').innerText = data.q;
+
+            if (state.writing.mode === 'hint') {
+                document.getElementById('hanzi-writer-target').innerHTML = '';
+                writer = HanziWriter.create('hanzi-writer-target', data.ans, {
+                    width: 400, height: 400, padding: 20,
+                    showCharacter: false, showOutline: true,
+                    strokeAnimationSpeed: 2, delayBetweenStrokes: 50, outlineColor: '#bbb'
+                });
+                writer.quiz({
+                    onComplete: function() {
+                        totalScore += 10;
+                        document.getElementById('score-display').innerText = totalScore;
+                        goNextQuestion();
+                    },
+                    onMistake: function() {
+                        state.writing.wrongItems.add(`${data.q.replace('[', '').replace(']', '')} -> ${data.ans}`);
+                    }
+                });
+            } else {
+                clearCanvas();
+            }
+        }
+
+        // Canvas 手寫事件 (支援 Apple Pencil)
+        const canvas = document.getElementById('blank-canvas');
+        const ctx = canvas.getContext('2d');
+        ctx.lineWidth = 12;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.strokeStyle = '#1A2B3C';
+
+        let isDrawing = false;
+        let strokesData = [];
+        let currentStroke = [[], []];
+
+        function getCoordinates(e) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+            const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+            return { x: clientX - rect.left, y: clientY - rect.top };
+        }
+
+        function startDrawing(e) {
+            e.preventDefault();
+            isDrawing = true;
+            const pos = getCoordinates(e);
+            ctx.beginPath();
+            ctx.moveTo(pos.x, pos.y);
+            currentStroke = [[Math.round(pos.x)], [Math.round(pos.y)]];
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            e.preventDefault();
+            const pos = getCoordinates(e);
+            ctx.lineTo(pos.x, pos.y);
+            ctx.stroke();
+            currentStroke[0].push(Math.round(pos.x));
+            currentStroke[1].push(Math.round(pos.y));
+        }
+
+        function stopDrawing() {
+            if (!isDrawing) return;
+            isDrawing = false;
+            if (currentStroke[0].length > 0) strokesData.push(currentStroke);
+        }
+
+        canvas.addEventListener('pointerdown', startDrawing);
+        canvas.addEventListener('pointermove', draw);
+        canvas.addEventListener('pointerup', stopDrawing);
+        canvas.addEventListener('pointerleave', stopDrawing);
+        canvas.addEventListener('touchstart', startDrawing, {passive: false});
+        canvas.addEventListener('touchmove', draw, {passive: false});
+        canvas.addEventListener('touchend', stopDrawing);
+
+        function clearCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            strokesData = [];
+            if (writer && state.writing.mode === 'hint') writer.quiz();
+        }
+
+        async function recognizeHandwriting() {
+            if (strokesData.length === 0) {
+                alert('請先在空白處寫字喔！');
+                return;
+            }
+
+            const data = writingData[state.writing.index];
+            const btnRecog = document.getElementById('btn-recognize');
+            btnRecog.disabled = true;
+            btnRecog.innerText = '辨識中...';
+
+            const payload = {
+                "options": "enable_pre_space",
+                "requests": [{
+                    "writing_guide": { "writing_area_width": 400, "writing_area_height": 400 },
+                    "ink": strokesData,
+                    "language": "zh-TW"
+                }]
+            };
+
+            try {
+                const targetUrl = 'https://inputtools.google.com/request?ime=handwriting&app=mobilesearch&cs=1&oe=UTF-8';
+                const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(targetUrl);
+                
+                const response = await fetch(proxyUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                const json = await response.json();
+                const results = json[1][0][1];
+                
+                if (results.includes(data.ans)) {
+                    totalScore += 15; // 空白挑戰成功給高分
+                    document.getElementById('score-display').innerText = totalScore;
+                    goNextQuestion();
+                } else {
+                    alert(`認出來是：${results.slice(0, 3).join(', ')}。請清除重寫！`);
+                    state.writing.wrongItems.add(`${data.q.replace('[', '').replace(']', '')} -> ${data.ans}`);
+                }
+            } catch (error) {
+                alert('網路連線有問題，請再試一次。');
+            } finally {
+                btnRecog.disabled = false;
+                btnRecog.innerText = '辨識送出';
+            }
+        }
+    </script>
+</body>
+</html>
