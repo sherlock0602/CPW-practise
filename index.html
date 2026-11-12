@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>樹林國小 字音字形練習</title>
+    <title>字音字形練習</title>
     <script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.5/dist/hanzi-writer.min.js"></script>
     <script src="questions.js"></script>
     <style>
@@ -127,14 +127,17 @@
             font-weight: 900;
             color: var(--text-dark);
             margin: 0;
-            line-height: 1.2;
+            line-height: 1.3;
             text-align: center;
         }
+
         /* 將注音符號特別標示顏色 */
         .zhuyin-highlight {
             color: #E74C3C;
-            font-size: 0.9em;
+            font-size: 0.8em;
+            margin: 0 5px; /* 讓注音和括號之間保持一點呼吸空間 */
         }
+
         .progress-text {
             color: var(--theme-green);
             font-size: 18px;
@@ -142,7 +145,7 @@
             margin-top: 30px;
         }
 
-        /* 右側讀音選項區 (2x2 Grid) */
+        /* 右側讀音選項區 */
         .right-grid {
             flex: 1;
             display: grid;
@@ -256,7 +259,7 @@
             border-radius: 25px;
             padding: 40px;
             text-align: center;
-            overflow-y: auto; /* 若錯題太多可滾動 */
+            overflow-y: auto;
         }
         .summary-title { font-size: 36px; color: var(--theme-green); font-weight: bold; margin-bottom: 15px; }
         .mistakes-list { display: flex; flex-wrap: wrap; gap: 15px; justify-content: center; margin: 25px 0; max-width: 800px; }
@@ -307,6 +310,7 @@
                 </div>
                 <div class="writing-area-wrapper">
                     <div id="hanzi-writer-target" style="display: none;"></div>
+                    <!-- 空白挑戰維持 Canvas 讓學生自由揮灑 -->
                     <canvas id="blank-canvas" width="300" height="300" style="touch-action: none;"></canvas>
                 </div>
                 <div class="writing-actions">
@@ -330,7 +334,6 @@
         let totalScore = 0;
         let state = {
             pinyin: { index: 0, wrongItems: new Set(), answered: false },
-            // 注意：這裡將預設模式改為 'blank' (空白挑戰)
             writing: { index: 0, wrongItems: new Set(), mode: 'blank' } 
         };
         let writer = null;
@@ -362,7 +365,6 @@
                 if (tab === 'pinyin') {
                     loadPinyinQuestion();
                 } else {
-                    // 切換到字形時，確保介面也是預設的 blank
                     setWritingMode(state.writing.mode);
                     initWritingQuestion();
                 }
@@ -393,7 +395,6 @@
                 } else {
                     if (currentTab === 'pinyin') loadPinyinQuestion();
                     else {
-                        // 每換下一題，自動切回空白挑戰，鼓勵學生自己寫
                         setWritingMode('blank');
                         initWritingQuestion();
                     }
@@ -490,8 +491,8 @@
             if(state.writing.index >= writingData.length) return;
             const data = writingData[state.writing.index];
             
-            // 替換括號內的注音並加上紅色高亮，讓學生一眼看出
-            const displayQ = data.q.replace(/\[(.*?)\]/, '<span class="zhuyin-highlight">（$1）</span>');
+            // 將題目中的 [注音] 替換成 （ 注音 ）格式
+            const displayQ = data.q.replace(/\[(.*?)\]/, '（<span class="zhuyin-highlight">$1</span>）');
             document.getElementById('writing-q').innerHTML = displayQ;
 
             if (state.writing.mode === 'hint') {
@@ -503,7 +504,7 @@
                 });
                 writer.quiz({
                     onComplete: function() {
-                        totalScore += 5; // 看提示寫對只給 5 分
+                        totalScore += 5; // 描紅給5分
                         document.getElementById('score-display').innerText = totalScore;
                         goNextQuestion();
                     }
@@ -513,7 +514,7 @@
             }
         }
 
-        // Canvas 手寫事件 (支援 Apple Pencil)
+        // --- Canvas 自由手寫邏輯 ---
         const canvas = document.getElementById('blank-canvas');
         const ctx = canvas.getContext('2d');
         ctx.lineWidth = 12;
@@ -571,7 +572,7 @@
             if (writer && state.writing.mode === 'hint') writer.quiz();
         }
 
-        // 強化的多重 API 備援連線機制
+        // --- 直接連線 Google API (無需 Proxy) ---
         async function recognizeHandwriting() {
             if (strokesData.length === 0) {
                 alert('請先在空白處寫字喔！');
@@ -593,56 +594,45 @@
             };
 
             const targetUrl = 'https://inputtools.google.com/request?ime=handwriting&app=mobilesearch&cs=1&oe=UTF-8';
-            
-            // 使用多個不同的免費 Proxy 避免 GitHub Pages 被擋
-            const proxies = [
-                'https://api.allorigins.win/raw?url=',
-                'https://corsproxy.io/?'
-            ];
-
-            let json = null;
-
-            for (let proxy of proxies) {
-                try {
-                    const fetchUrl = proxy + encodeURIComponent(targetUrl);
-                    const response = await fetch(fetchUrl, {
-                        method: 'POST',
-                        headers: { 
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(payload)
-                    });
-                    
-                    if (response.ok) {
-                        json = await response.json();
-                        break; 
-                    }
-                } catch (error) {
-                    console.warn('Proxy 連線失敗，切換備用連線...', proxy);
-                }
-            }
-
-            btnRecog.disabled = false;
-            btnRecog.innerText = '辨識送出';
-
-            if (!json) {
-                alert('伺服器目前忙碌中，請稍等幾秒後再點一次「辨識送出」。');
-                return;
-            }
 
             try {
+                const response = await fetch(targetUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) throw new Error('網路回應錯誤');
+                
+                const json = await response.json();
+                if (json[0] !== "SUCCESS") throw new Error('API 辨識失敗');
+
                 const results = json[1][0][1];
+                
                 if (results.includes(data.ans)) {
                     totalScore += 15; // 空白挑戰成功給 15 分
                     document.getElementById('score-display').innerText = totalScore;
+                    
+                    // 在畫布上畫出一個綠色大勾/圓圈給予回饋
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.fillStyle = '#20A045';
+                    ctx.font = '120px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('⭕', canvas.width/2, canvas.height/2);
+
                     goNextQuestion();
                 } else {
-                    alert(`認出來是：${results.slice(0, 3).join(', ')}。請清除重寫！`);
+                    alert(`系統認出來是：${results.slice(0, 3).join(', ')}。寫得不太對，請清除重寫！`);
                     state.writing.wrongItems.add(`${data.q.replace(/\[|\]/g, '')} -> ${data.ans}`);
+                    clearCanvas();
                 }
             } catch (err) {
                 console.error(err);
-                alert('解析失敗，請重試。');
+                alert('辨識連線失敗，請檢查網路狀態或稍後重試。');
+            } finally {
+                btnRecog.disabled = false;
+                btnRecog.innerText = '辨識送出';
             }
         }
     </script>
