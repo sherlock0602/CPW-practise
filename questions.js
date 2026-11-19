@@ -1,756 +1,604 @@
-<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>字音字形練習</title>
-    <script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.5/dist/hanzi-writer.min.js"></script>
-    <script src="questions.js"></script>
-    <style>
-        :root {
-            --theme-green: #20A045;
-            --bg-color: #F0F7F2;
-            --card-border: #80D08A;
-            --text-dark: #1A2B3C;
-            --text-gray: #7A8B9C;
-            --gold: #FFC107;
-            --danger: #E74C3C;
-        }
-        body {
-            font-family: 'PingFang TC', '微軟正黑體', sans-serif;
-            margin: 0;
-            background-color: var(--bg-color);
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            overflow: hidden;
-        }
-        
-        /* 頂部導覽列 */
-        header {
-            background-color: var(--theme-green);
-            padding: 10px 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-        .header-title {
-            color: white;
-            font-size: 22px;
-            font-weight: bold;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .header-controls {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .mode-toggle {
-            display: flex;
-            background: rgba(255,255,255,0.2);
-            border-radius: 8px;
-            overflow: hidden;
-            border: 1px solid rgba(255,255,255,0.5);
-        }
-        .mode-toggle button {
-            background: transparent;
-            color: white;
-            border: none;
-            padding: 8px 12px;
-            font-size: 15px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: 0.3s;
-        }
-        .mode-toggle button.active {
-            background: white;
-            color: var(--theme-green);
-        }
-        .score-badge {
-            background-color: var(--gold);
-            color: #A06000;
-            font-weight: bold;
-            font-size: 16px;
-            padding: 6px 12px;
-            border-radius: 20px;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-        }
-        
-        /* 系統按鈕 (儲存/重置) */
-        .sys-btn {
-            background: rgba(255,255,255,0.9);
-            color: var(--theme-green);
-            border: none;
-            padding: 6px 10px;
-            border-radius: 8px;
-            font-weight: bold;
-            cursor: pointer;
-            font-size: 14px;
-            transition: 0.2s;
-        }
-        .sys-btn:hover { transform: scale(1.05); }
-        .sys-btn.danger { color: var(--danger); }
-        
-        /* 主要內容區 */
-        main {
-            flex: 1;
-            padding: 20px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            box-sizing: border-box;
-            position: relative;
-        }
-        .container {
-            display: none;
-            width: 100%;
-            max-width: 1000px; 
-            height: 100%;
-            max-height: 550px; 
-            gap: 20px;
-        }
-        .container.active { display: flex; }
-        
-        /* 左側題目卡 */
-        .left-card {
-            flex: 1.2;
-            background: white;
-            border: 5px solid var(--card-border);
-            border-radius: 25px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            box-shadow: 0 8px 15px rgba(0,0,0,0.05);
-            padding: 20px;
-            box-sizing: border-box;
-            position: relative;
-        }
-        .instruction-text {
-            color: var(--text-gray);
-            font-size: 20px;
-            font-weight: bold;
-            margin-bottom: 15px;
-        }
-        .main-question {
-            font-size: 85px; 
-            font-weight: 900;
-            color: var(--text-dark);
-            margin: 0;
-            line-height: 1.3;
-            text-align: center;
-        }
-        .zhuyin-highlight {
-            color: var(--danger);
-            font-size: 0.8em;
-            margin: 0 5px;
-        }
-        .progress-text {
-            color: var(--theme-green);
-            font-size: 18px;
-            font-weight: bold;
-            margin-top: 30px;
-        }
-        .mistake-mode-badge {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            background: var(--danger);
-            color: white;
-            padding: 5px 10px;
-            border-radius: 10px;
-            font-weight: bold;
-            display: none;
-        }
+// questions.js
 
-        /* 右側選項/寫字區 */
-        .right-grid {
-            flex: 1;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            grid-template-rows: 1fr 1fr;
-            gap: 15px;
-        }
-        .option-btn {
-            background: white;
-            border: 4px solid var(--card-border);
-            border-radius: 20px;
-            font-size: 32px;
-            font-weight: bold;
-            color: var(--theme-green);
-            cursor: pointer;
-            transition: 0.2s;
-            box-shadow: 0 6px 10px rgba(0,0,0,0.05);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-        .option-btn:hover { transform: scale(1.02); background: #f8fcf8; }
-        .option-btn.correct { background: var(--theme-green); color: white; border-color: var(--theme-green); }
-        .option-btn.wrong { background: var(--danger); color: white; border-color: var(--danger); animation: shake 0.4s; }
+// 讀音題庫 (共 300 題，針對「標示字」測驗)
+const pinyinData = [
+    // === 試卷 A (1-100) ===
+    { q: "泥「淖」", opts: ["ㄋㄠˋ", "ㄓㄨㄛˊ", "ㄋㄠˇ", "ㄓㄨㄛˋ"], ans: 0 },
+    { q: "步「伐」", opts: ["ㄈㄚˋ", "ㄈㄚ", "ㄈㄚˇ", "ㄈㄚˊ"], ans: 1 },
+    { q: "髮「簪」", opts: ["ㄐㄧㄢˋ", "ㄐㄧㄢ", "ㄗㄢˋ", "ㄗㄢ"], ans: 3 },
+    { q: "感「慨」", opts: ["ㄎㄞˋ", "ㄍㄞˋ", "ㄎㄞˇ", "ㄍㄞˇ"], ans: 2 },
+    { q: "「誹」言", opts: ["ㄈㄟˊ", "ㄈㄟ", "ㄈㄟˋ", "ㄈㄟˇ"], ans: 3 },
+    { q: "「鮑」魚", opts: ["ㄅㄠ", "ㄅㄠˋ", "ㄐㄧㄠˋ", "ㄐㄧㄠ"], ans: 1 },
+    { q: "豆「豉」", opts: ["ㄔˇ", "ㄍㄨˇ", "ㄉㄡˋ", "ㄕˋ"], ans: 0 },
+    { q: "慧「黠」", opts: ["ㄒㄧㄚˊ", "ㄒㄧㄚˇ", "ㄒㄧㄚˋ", "ㄒㄧㄚ"], ans: 0 },
+    { q: "「麾」下", opts: ["ㄏㄨㄟˊ", "ㄏㄨㄟ", "ㄇㄛˊ", "ㄇㄛ"], ans: 1 },
+    { q: "「諡」號", opts: ["ㄧˊ", "ㄕˊ", "ㄕˋ", "ㄧˋ"], ans: 2 },
+    { q: "手「腕」", opts: ["ㄨㄢˊ", "ㄨㄢˇ", "ㄨㄢˋ", "ㄨㄢ"], ans: 2 },
+    { q: "「符」合", opts: ["ㄈㄨ", "ㄈㄨˊ", "ㄈㄨˋ", "ㄈㄨˇ"], ans: 1 },
+    { q: "「落」枕", opts: ["ㄌㄠˋ", "ㄌㄚˋ", "ㄌㄨㄛˋ", "ㄌㄜˋ"], ans: 0 },
+    { q: "揣「度」", opts: ["ㄉㄨㄛˊ", "ㄉㄨㄛˋ", "ㄉㄨˊ", "ㄉㄨˋ"], ans: 1 },
+    { q: "開「鍘」", opts: ["ㄓㄚˇ", "ㄓㄚˊ", "ㄓㄚˋ", "ㄓㄚ"], ans: 1 },
+    { q: "笑「靨」", opts: ["ㄧㄢˋ", "ㄧㄝˋ", "ㄧㄢˇ", "ㄧㄝˇ"], ans: 1 },
+    { q: "針「灸」", opts: ["ㄐㄧㄠˇ", "ㄐㄧㄡˇ", "ㄐㄧㄠ", "ㄐㄧㄡ"], ans: 1 },
+    { q: "「惄」然", opts: ["ㄋ一", "ㄋ一ˊ", "ㄋ一ˋ", "ㄋ一ˇ"], ans: 2 },
+    { q: "「捃」摭", opts: ["ㄐㄩㄣ ", "ㄐㄩㄣˋ", "ㄐㄩㄣˊ", "ㄐㄩㄣˇ"], ans: 1 },
+    { q: "「砧」板", opts: ["ㄉㄧㄢˋ", "ㄓㄢ", "ㄊㄧㄝ", "ㄓㄣ"], ans: 3 },
+    { q: "「穹」谷", opts: ["ㄑㄩㄥˇ", "ㄑㄩㄥˊ", "ㄑㄩㄥˋ", "ㄑㄩㄥ"], ans: 3 },
+    { q: "巷「弄」", opts: ["ㄋㄨㄥˇ", "ㄌㄨㄥˋ", "ㄌㄨㄥˇ", "ㄋㄨㄥˋ"], ans: 1 },
+    { q: "「賒」借", opts: ["ㄔㄚˊ", "ㄕㄜˊ", "ㄔㄚ", "ㄕㄜ"], ans: 3 },
+    { q: "租「賃」", opts: ["ㄖㄣˋ", "ㄌㄧㄣˋ", "ㄌㄧㄥˋ", "ㄖㄣˊ"], ans: 1 },
+    { q: "粗「獷」", opts: ["ㄍㄨㄤˊ", "ㄍㄨㄤˋ", "ㄍㄨㄤ", "ㄍㄨㄤˇ"], ans: 3 },
+    { q: "傳「播」鏈", opts: ["ㄅㄛ", "ㄅㄛˇ", "ㄅㄛˋ", "ㄅㄛˊ"], ans: 2 },
+    { q: "緊「箍」咒", opts: ["ㄍㄨˋ", "ㄍㄨˊ", "ㄍㄨˇ", "ㄍㄨ"], ans: 3 },
+    { q: "大肆咆「哮」", opts: ["ㄒㄧㄠˋ", "ㄅㄠ", "ㄅㄠˋ", "ㄒㄧㄠ"], ans: 3 },
+    { q: "「戛」玉清音", opts: ["ㄐㄧㄚˊ", "ㄐㄧㄚˇ", "ㄑㄧㄡ", "ㄒㄧㄚˋ"], ans: 0 },
+    { q: "「炸」薯條", opts: ["ㄓㄚˊ", "ㄗㄚˋ", "ㄗㄚˊ", "ㄓㄚˋ"], ans: 0 },
+    { q: "「刻」鶻類騖", opts: ["ㄎㄜˋ", "ㄎㄜ", "ㄎㄜˇ", "ㄎㄜˊ"], ans: 0 },
+    { q: "善於「偽」裝", opts: ["ㄨㄟ", "ㄨㄟˋ", "ㄨㄟˊ", "ㄨㄟˇ"], ans: 1 },
+    { q: "緊「箍」咒", opts: ["ㄍㄨˊ", "ㄎㄨˊ", "ㄎㄨ", "ㄍㄨ"], ans: 3 },
+    { q: "台灣「鯛」", opts: ["ㄉㄧㄠ", "ㄊㄧㄠˊ", "ㄉㄧㄠˇ", "ㄓㄡ"], ans: 0 },
+    { q: "「鰻」魚飯", opts: ["ㄇㄢˇ", "ㄇㄢˊ", "ㄇㄢˋ", "ㄇㄢ"], ans: 1 },
+    { q: "「憋」得慌", opts: ["ㄅㄧㄝˊ", "ㄅㄧㄝˋ", "ㄅㄧㄝ", "ㄅㄧㄝˇ"], ans: 2 },
+    { q: "「涮」碗碟", opts: ["ㄕㄨㄢ", "ㄕㄨㄢˋ", "ㄕㄨㄚ", "ㄕㄨㄚˋ"], ans: 1 },
+    { q: "「慊」於心", opts: ["ㄑㄧㄢ", "ㄑㄧㄝ", "ㄑㄧㄝˋ", "ㄑㄧㄢˋ"], ans: 2 },
+    { q: "「撢」桌子", opts: ["ㄉㄢˊ", "ㄉㄢˋ", "ㄉㄢˇ", "ㄉㄢ"], ans: 2 },
+    { q: "水「滸」傳", opts: ["ㄒㄩˇ", "ㄏㄨˇ", "ㄏㄨˋ", "ㄒㄩˋ"], ans: 1 },
+    { q: "通「緝」犯", opts: ["ㄐㄧˋ", "ㄐㄧˊ", "ㄑㄧˋ", "ㄑㄧˊ"], ans: 2 },
+    { q: "手舞足「蹈」", opts: ["ㄉㄠ", "ㄉㄠˇ", "ㄉㄠˋ", "ㄉㄠˊ"], ans: 2 },
+    { q: "正本「溯」源", opts: ["ㄕㄨㄛˋ", "ㄕㄨˋ", "ㄙㄨㄛˋ", "ㄙㄨˋ"], ans: 3 },
+    { q: "「濯」流挹雲", opts: ["ㄓㄨㄛ", "ㄓㄨㄛˇ", "ㄓㄨㄛˋ", "ㄓㄨㄛˊ"], ans: 3 },
+    { q: "心存「僥」倖", opts: ["ㄧㄠˊ", "ㄐㄧㄠˇ", "ㄐㄧㄠ", "ㄧㄠ"], ans: 1 },
+    { q: "忸「怩」作態", opts: ["ㄋㄧˊ", "ㄋㄧ", "ㄋㄧˇ", "ㄋㄧˋ"], ans: 0 },
+    { q: "一筆抹「煞」", opts: ["ㄕㄚˇ", "ㄕㄚˋ", "ㄕㄚ", "ㄕㄚˋ"], ans: 2 },
+    { q: "「翳」入天聽", opts: ["ㄧˇ", "ㄧˊ", "ㄧˋ", "ㄧ"], ans: 2 },
+    { q: "「趑」趄卻顧", opts: ["ㄗ", "ㄗˇ", "ㄗˋ", "ㄗˊ"], ans: 0 },
+    { q: "敞開心「扉」", opts: ["ㄈㄟ", "ㄈㄟˋ", "ㄈㄟˊ", "ㄈㄟˇ"], ans: 0 },
+    { q: "「蚍」蜉蟻子", opts: ["ㄆ一ˇ", "ㄆ一ˊ", "ㄆ一", "ㄆ一ˋ"], ans: 1 },
+    { q: "「卻」顧", opts: ["ㄑㄩㄝˇ", "ㄑㄩㄝ", "ㄑㄩㄝˊ", "ㄑㄩㄝˋ"], ans: 3 },
+    { q: "仁者「樂」山", opts: ["ㄧㄠˋ", "ㄩㄝˋ", "ㄌㄜˋ", "ㄌㄠˋ"], ans: 0 },
+    { q: "請君入「彀」", opts: ["ㄎㄜˇ", "ㄎㄜˊ", "ㄍㄡˇ", "ㄍㄡˋ"], ans: 3 },
+    { q: "「齏」骨粉身", opts: ["ㄑㄧˊ", "ㄐㄧ", "ㄑㄧ", "ㄐㄧˊ"], ans: 1 },
+    { q: "面容「姣」好", opts: ["ㄐㄧㄠˇ", "ㄒㄧㄠˇ", "ㄐㄧㄠ", "ㄒㄧㄠ"], ans: 0 },
+    { q: "新「冠」肺炎", opts: ["ㄍㄨㄢˊ", "ㄍㄨㄢ", "ㄍㄨㄢˋ", "ㄍㄨㄢˇ"], ans: 1 },
+    { q: "部「署」飛彈", opts: ["ㄕㄨˊ", "ㄕㄨˋ", "ㄕㄨˇ", "ㄕㄨ"], ans: 1 },
+    { q: "么「麼」細物", opts: ["ㄇㄜ", "ㄇㄜˊ", "ㄇㄜ˙", "ㄇㄛˋ"], ans: 1 },
+    { q: "百福具「臻」", opts: ["ㄓㄣˊ", "ㄓㄣˋ", "ㄓㄣ", "ㄓㄣˇ"], ans: 2 },
+    { q: "「酢」漿草", opts: ["ㄗㄨㄛˊ", "ㄓㄚˋ", "ㄘㄨˋ", "ㄗㄨㄛˋ"], ans: 2 },
+    { q: "「鷸」蚌相爭", opts: ["ㄐㄩˊ", "ㄩˋ", "ㄩˇ", "ㄐㄩˋ"], ans: 1 },
+    { q: "連「載」漫畫", opts: ["ㄗㄞ", "ㄗㄞˋ", "ㄗㄞˇ", "ㄗㄞˊ"], ans: 1 },
+    { q: "「炰」地瓜", opts: ["ㄆㄠˋ", "ㄆㄠˊ", "ㄆㄠ", "ㄆㄠˇ"], ans: 1 },
+    { q: "深入骨「髓」", opts: ["ㄙㄨㄟˇ", "ㄙㄨㄟ", "ㄙㄨㄟˊ", "ㄙㄨㄟˋ"], ans: 0 },
+    { q: "濁「醪」妙理", opts: ["ㄌㄠˋ", "ㄌㄠˇ", "ㄌㄠ", "ㄌㄠˊ"], ans: 3 },
+    { q: "凹「凸」不平", opts: ["ㄊㄨˊ", "ㄊㄨ", "ㄊㄨˇ", "ㄊㄨˋ"], ans: 0 },
+    { q: "「駭」客入侵", opts: ["ㄏㄞ", "ㄏㄜˊ", "ㄏㄞˇ", "ㄏㄞˋ"], ans: 3 },
+    { q: "井蛙「醯」雞", opts: ["ㄧˋ", "ㄒㄧ", "ㄏㄞ", "ㄏㄞˇ"], ans: 1 },
+    { q: "「便」宜行事", opts: ["ㄆㄧㄢˊ", "ㄅㄧㄢ", "ㄆㄧㄢ", "ㄅㄧㄢˋ"], ans: 3 },
+    { q: "自在「愜」意", opts: ["ㄐㄧㄚˊ", "ㄐㄧㄚˇ", "ㄑㄧㄝ", "ㄑㄧㄝˋ"], ans: 3 },
+    { q: "「綜」觀全局", opts: ["ㄗㄨㄥˇ", "ㄗㄨㄥˊ", "ㄗㄨㄥ", "ㄗㄨㄥˋ"], ans: 3 },
+    { q: "聯「袂」前往", opts: ["ㄇㄟˋ", "ㄇㄟ", "ㄐㄩㄝˊ", "ㄇㄟˊ"], ans: 0 },
+    { q: "「脂」膏不潤", opts: ["ㄓˊ", "ㄓˇ", "ㄓˋ", "ㄓ"], ans: 3 },
+    { q: "包「紮」傷口", opts: ["ㄗㄚ", "ㄗㄚˊ", "ㄓㄚˊ", "ㄓㄚ"], ans: 2 },
+    { q: "酩「酊」大醉", opts: ["ㄉㄧㄥˋ", "ㄉㄧㄥˇ", "ㄉㄧㄥ", "ㄉㄧㄥˊ"], ans: 1 },
+    { q: "佳冶窈「窕」", opts: ["ㄊ一ㄠˊ", "ㄊ一ㄠˋ", "ㄊ一ㄠ", "ㄊ一ㄠˇ"], ans: 3 },
+    { q: "設「饌」待客", opts: ["ㄓㄨㄢˇ", "ㄓㄨㄢˊ", "ㄓㄨㄢˋ", "ㄓㄨㄢ"], ans: 2 },
+    { q: "賄「賂」官員", opts: ["ㄌㄨˋ", "ㄌㄨˇ", "ㄌㄨㄛˋ", "ㄌㄨ"], ans: 0 },
+    { q: "華亭鶴「唳」", opts: ["ㄌㄧˊ", "ㄌㄟˋ", "ㄌㄧˋ", "ㄌㄧ"], ans: 2 },
+    { q: "「挑」燈夜戰", opts: ["ㄊㄧㄠˊ", "ㄊㄧㄠˇ", "ㄊㄧㄠ", "ㄊㄧㄠˋ"], ans: 1 },
+    { q: "現場履「勘」", opts: ["ㄎㄢ", "ㄎㄢˊ", "ㄎㄢˇ", "ㄎㄢˋ"], ans: 0 },
+    { q: "慈烏反「哺」", opts: ["ㄅㄨˇ", "ㄆㄨˇ", "ㄅㄨˋ", "ㄆㄨˋ"], ans: 0 },
+    { q: "敝「屣」王侯", opts: ["ㄊㄧ", "ㄒㄧˇ", "ㄊㄧˊ", "ㄒㄧ"], ans: 1 },
+    { q: "花東「縱」谷", opts: ["ㄗㄨㄥ", "ㄗㄨㄥˇ", "ㄗㄨㄥˋ", "ㄗㄨㄥˊ"], ans: 0 },
+    { q: "「撙」節用水", opts: ["ㄓㄨㄣˇ", "ㄗㄨㄣˇ", "ㄗㄨㄣ", "ㄓㄨㄣ"], ans: 1 },
+    { q: "以申謝「悃」", opts: ["ㄎㄨㄣˇ", "ㄎㄨㄣˊ", "ㄎㄨㄣˋ", "ㄎㄨㄣ"], ans: 0 },
+    { q: "垂「涎」染指", opts: ["ㄒㄧㄢˋ", "ㄧㄢˋ", "ㄧㄢˊ", "ㄒㄧㄢˊ"], ans: 3 },
+    { q: "「恣」意妄為", opts: ["ㄘ", "ㄘˋ", "ㄗ", "ㄗˋ"], ans: 3 },
+    { q: "輕「佻」淺薄", opts: ["ㄊㄧㄠ", "ㄊㄧㄠˊ", "ㄊㄧㄠˇ", "ㄊㄧㄠˋ"], ans: 1 },
+    { q: "靜「謐」無聲", opts: ["ㄅㄧˋ", "ㄇㄧˋ", "ㄅㄧˊ", "ㄇㄧˊ"], ans: 1 },
+    { q: "空谷「跫」音", opts: ["ㄍㄨㄥ", "ㄑㄩㄥˊ", "ㄑㄩㄥ", "ㄍㄨㄥˊ"], ans: 1 },
+    { q: "「雌」雞報曉", opts: ["ㄘˊ", "ㄘ", "ㄘˋ", "ㄘˇ"], ans: 1 },
+    { q: "「吮」指回味", opts: ["ㄩㄣˇ", "ㄩㄣ", "ㄕㄨㄣ", "ㄕㄨㄣˇ"], ans: 3 },
+    { q: "斬關奪「隘」", opts: ["ㄧˋ", "ㄜˋ", "ㄧㄝˋ", "ㄞˋ"], ans: 3 },
+    { q: "玫「瑰」有刺", opts: ["ㄍㄨㄟˇ", "ㄍㄨㄟ", "ㄍㄨㄟˋ", "ㄍㄨㄟˊ"], ans: 1 },
+    { q: "鑲「嵌」玻璃", opts: ["ㄎㄢˇ", "ㄑㄧㄢ", "ㄎㄢ", "ㄑㄧㄢˋ"], ans: 1 },
+    { q: "畫脂「鏤」冰", opts: ["ㄌㄩˇ", "ㄌㄡˊ", "ㄌㄩˋ", "ㄌㄡˋ"], ans: 3 },
+    { q: "「橫」死街頭", opts: ["ㄏㄥˋ", "ㄏㄥˊ", "ㄏㄥ", "ㄏㄥˇ"], ans: 0 },
+    { q: "積愆叢「慝」", opts: ["ㄋㄧ", "ㄊㄜ", "ㄋㄧˋ", "ㄊㄜˋ"], ans: 3 },
+    { q: "高「纖」蔬果", opts: ["ㄒㄧㄢˋ", "ㄒㄧㄢ", "ㄑㄧㄢ", "ㄑㄧㄢˋ"], ans: 1 },
+    { q: "「夐」不見人", opts: ["ㄑㄩㄥˋ", "ㄑㄩㄥˊ", "ㄒㄩㄥ", "ㄒㄩㄥˋ"], ans: 3 },
+    // === 試卷 B (101-200) ===
+    { q: "「怔」住", opts: ["ㄌㄥˋ", "ㄌㄥˊ", "ㄓㄥˇ", "ㄓㄥ"], ans: 0 },
+    { q: "深「湛」", opts: ["ㄓㄢ", "ㄓㄢˊ", "ㄓㄢˋ", "ㄓㄢˇ"], ans: 2 },
+    { q: "「舂」米", opts: ["ㄔㄨㄥˋ", "ㄔㄨㄥ", "ㄔㄨㄥˇ", "ㄔㄨㄥˊ"], ans: 1 },
+    { q: "「胴」體", opts: ["ㄉㄨㄥˋ", "ㄉㄨㄥˇ", "ㄉㄨㄥˊ", "ㄉㄨㄥ"], ans: 0 },
+    { q: "「擯」棄", opts: ["ㄅㄧㄣˊ", "ㄅㄧㄣˋ", "ㄅㄧㄣˇ", "ㄅㄧㄣ"], ans: 1 },
+    { q: "山「隘」", opts: ["ㄞˇ", "ㄞˊ", "ㄞˋ", "ㄞ"], ans: 2 },
+    { q: "冰「磧」", opts: ["ㄑㄧ", "ㄑㄧˇ", "ㄑㄧˋ", "ㄑㄧˊ"], ans: 2 },
+    { q: "「咂」嘴", opts: ["ㄗㄚˊ", "ㄗㄚ", "ㄗㄚˇ", "ㄗㄚˋ"], ans: 1 },
+    { q: "「鉻」鋼", opts: ["ㄍㄜˇ", "ㄍㄜ", "ㄍㄜˋ", "ㄍㄜˊ"], ans: 2 },
+    { q: "鳳「輦」", opts: ["ㄋㄧㄢˋ", "ㄋㄧㄢ", "ㄋㄧㄢˊ", "ㄋㄧㄢˇ"], ans: 3 },
+    { q: "朝「請」", opts: ["ㄐㄧㄥˋ", "ㄐㄧㄥ", "ㄐㄧㄥˇ", "ㄐㄧㄥˊ"], ans: 0 },
+    { q: "「咱」家", opts: ["ㄗㄚˋ", "ㄗㄚˇ", "ㄗㄚˊ", "ㄗㄚ"], ans: 2 },
+    { q: "「繃」價", opts: ["ㄅㄥˊ", "ㄅㄥˇ", "ㄅㄥˋ", "ㄅㄥ"], ans: 3 },
+    { q: "侘「傺」", opts: ["ㄔ", "ㄔˊ", "ㄔˋ", "ㄔˇ"], ans: 2 },
+    { q: "「桔」子汁", opts: ["ㄐㄩ", "ㄐㄩˇ", "ㄐㄩˊ", "ㄐㄩˋ"], ans: 2 },
+    { q: "「渾」天儀", opts: ["ㄏㄨㄣˇ", "ㄏㄨㄣˊ", "ㄏㄨㄣ", "ㄏㄨㄣˋ"], ans: 3 },
+    { q: "處方「箋」", opts: ["ㄐㄧㄢˇ", "ㄐㄧㄢˋ", "ㄐㄧㄢˊ", "ㄐㄧㄢ"], ans: 3 },
+    { q: "癲「癇」症", opts: ["ㄒㄧㄢ", "ㄒㄧㄢˊ", "ㄒㄧㄢˇ", "ㄒㄧㄢˋ"], ans: 1 },
+    { q: "「炮」羊肉", opts: ["ㄅㄠˋ", "ㄅㄠˊ", "ㄅㄠˇ", "ㄅㄠ"], ans: 3 },
+    { q: "「衝」南走", opts: ["ㄔㄨㄥ", "ㄔㄨㄥˋ", "ㄔㄨㄥˊ", "ㄔㄨㄥˇ"], ans: 0 },
+    { q: "「落」腮鬍", opts: ["ㄌㄨㄛˋ", "ㄌㄨㄛˊ", "ㄌㄨㄛˇ", "ㄌㄨㄛ"], ans: 0 },
+    { q: "一「溜」煙", opts: ["ㄌㄧㄡˋ", "ㄌㄧㄡˊ", "ㄌㄧㄡ", "ㄌㄧㄡˇ"], ans: 0 },
+    { q: "一「爿」店", opts: ["ㄅㄢˊ", "ㄅㄢˇ", "ㄅㄢˋ", "ㄅㄢ"], ans: 2 },
+    { q: "雁「行」有序", opts: ["ㄏㄤˊ", "ㄏㄤˋ", "ㄏㄤ", "ㄏㄤˇ"], ans: 0 },
+    { q: "「教」學相長", opts: ["ㄐㄧㄠˊ", "ㄐㄧㄠˇ", "ㄐㄧㄠ", "ㄐㄧㄠˋ"], ans: 3 },
+    { q: "常「稔」之田", opts: ["ㄖㄣˇ", "ㄖㄣˊ", "ㄖㄣ", "ㄖㄣˋ"], ans: 0 },
+    { q: "鞭「辟」入裡", opts: ["ㄅㄧ", "ㄅㄧˋ", "ㄅㄧˊ", "ㄅㄧˇ"], ans: 1 },
+    { q: "雞「肫」鴨舌", opts: ["ㄓㄨㄣˋ", "ㄓㄨㄣˇ", "ㄓㄨㄣˊ", "ㄓㄨㄣ"], ans: 3 },
+    { q: "敬業「樂」群", opts: ["一ㄠˇ", "一ㄠˋ", "一ㄠ", "一ㄠˊ"], ans: 1 },
+    { q: "羞「惡」之心", opts: ["ㄨˊ", "ㄨˋ", "ㄨˇ", "ㄨ"], ans: 1 },
+    { q: "事有蹊「蹺」", opts: ["ㄑㄧㄠˋ", "ㄑㄧㄠ", "ㄑㄧㄠˇ", "ㄑㄧㄠˊ"], ans: 1 },
+    { q: "「喁」喁私語", opts: ["ㄩˇ", "ㄩˋ", "ㄩ", "ㄩˊ"], ans: 3 },
+    { q: "涵「煦」生民", opts: ["ㄒㄩˇ", "ㄒㄩ", "ㄒㄩˋ", "ㄒㄩˊ"], ans: 0 },
+    { q: "細「嚼」慢嚥", opts: ["ㄐㄧㄠˋ", "ㄐㄧㄠ", "ㄐㄧㄠˊ", "ㄐㄧㄠˇ"], ans: 2 },
+    { q: "「楔」形文字", opts: ["ㄒㄧㄝˋ", "ㄒㄧㄝ", "ㄒㄧㄝˊ", "ㄒㄧㄝˇ"], ans: 1 },
+    { q: "「拈」鬚搓手", opts: ["ㄋㄧㄢˊ", "ㄋㄧㄢ", "ㄋㄧㄢˋ", "ㄋㄧㄢˇ"], ans: 3 },
+    { q: "一酬一「酢」", opts: ["ㄗㄨㄛˊ", "ㄗㄨㄛˇ", "ㄗㄨㄛ", "ㄗㄨㄛˋ"], ans: 3 },
+    { q: "恫「瘝」在抱", opts: ["ㄍㄨㄢ", "ㄍㄨㄢˋ", "ㄍㄨㄢˊ", "ㄍㄨㄢˇ"], ans: 0 },
+    { q: "退「避」三舍", opts: ["ㄅㄧ", "ㄅㄧˊ", "ㄅㄧˋ", "ㄅㄧˇ"], ans: 2 },
+    { q: "窮途落「魄」", opts: ["ㄊㄨㄛ", "ㄊㄨㄛˇ", "ㄊㄨㄛˋ", "ㄊㄨㄛˊ"], ans: 2 },
+    { q: "預防接「種」", opts: ["ㄓㄨㄥˋ", "ㄓㄨㄥˊ", "ㄓㄨㄥˇ", "ㄓㄨㄥ"], ans: 0 },
+    { q: "倒廩傾「囷」", opts: ["ㄐㄩㄣˋ", "ㄐㄩㄣ", "ㄐㄩㄣˇ", "ㄐㄩㄣˊ"], ans: 1 },
+    { q: "天氣「熾」熱", opts: ["ㄔˋ", "ㄔˇ", "ㄔ", "ㄔˊ"], ans: 0 },
+    { q: "痛「滌」前非", opts: ["ㄉㄧˇ", "ㄉㄧˊ", "ㄉㄧ", "ㄉㄧˋ"], ans: 1 },
+    { q: "夜觀星「宿」", opts: ["ㄒㄧㄡˊ", "ㄒㄧㄡˇ", "ㄒㄧㄡ", "ㄒㄧㄡˋ"], ans: 3 },
+    { q: "種樹「畜」養", opts: ["ㄒㄩˊ", "ㄒㄩˋ", "ㄒㄩ", "ㄒㄩˇ"], ans: 1 },
+    { q: "「呫」血之盟", opts: ["ㄔㄜˇ", "ㄔㄜˊ", "ㄔㄜ", "ㄔㄜˋ"], ans: 3 },
+    { q: "「掄」眉豎目", opts: ["ㄌㄨㄣˊ", "ㄌㄨㄣˇ", "ㄌㄨㄣˋ", "ㄌㄨㄣ"], ans: 3 },
+    { q: "新來「乍」到", opts: ["ㄓㄚˋ", "ㄓㄚˇ", "ㄓㄚ", "ㄓㄚˊ"], ans: 0 },
+    { q: "一「塌」糊塗", opts: ["ㄊㄚˊ", "ㄊㄚˇ", "ㄊㄚ", "ㄊㄚˋ"], ans: 2 },
+    { q: "「孱」夫孽子", opts: ["ㄔㄢˊ", "ㄔㄢ", "ㄔㄢˇ", "ㄔㄢˋ"], ans: 0 },
+    { q: "螻「螘」得志", opts: ["一", "一ˋ", "一ˊ", "一ˇ"], ans: 3 },
+    { q: "織錦「緙」絲", opts: ["ㄎㄜ", "ㄎㄜˊ", "ㄎㄜˇ", "ㄎㄜˋ"], ans: 3 },
+    { q: "煮豆燃「萁」", opts: ["ㄑㄧˋ", "ㄑㄧˊ", "ㄑㄧˇ", "ㄑㄧ"], ans: 1 },
+    { q: "「擿」問犯人", opts: ["ㄊ一ˊ", "ㄊ一", "ㄊ一ˇ", "ㄊ一ˋ"], ans: 3 },
+    { q: "「暈」頭轉向", opts: ["ㄩㄣˇ", "ㄩㄣˋ", "ㄩㄣ", "ㄩㄣˊ"], ans: 2 },
+    { q: "斷「垣」殘壁", opts: ["ㄩㄢ", "ㄩㄢˋ", "ㄩㄢˇ", "ㄩㄢˊ"], ans: 3 },
+    { q: "年「湮」代遠", opts: ["ㄧㄣˇ", "ㄧㄣˊ", "ㄧㄣ", "ㄧㄣˋ"], ans: 2 },
+    { q: "末「梢」神經", opts: ["ㄕㄠˊ", "ㄕㄠ", "ㄕㄠˇ", "ㄕㄠˋ"], ans: 1 },
+    { q: "交通「壅」塞", opts: ["ㄩㄥˇ", "ㄩㄥ", "ㄩㄥˊ", "ㄩㄥˋ"], ans: 1 },
+    { q: "福履「綏」之", opts: ["ㄙㄨㄟˇ", "ㄙㄨㄟˋ", "ㄙㄨㄟˊ", "ㄙㄨㄟ"], ans: 3 },
+    { q: "鹽「漬」食物", opts: ["ㄗ", "ㄗˊ", "ㄗˇ", "ㄗˋ"], ans: 3 },
+    { q: "惡言「詈」辭", opts: ["ㄌㄧˊ", "ㄌㄧˇ", "ㄌㄧˋ", "ㄌㄧ"], ans: 2 },
+    { q: "香花供「養」", opts: ["一ㄤˇ", "一ㄤˊ", "一ㄤ", "一ㄤˋ"], ans: 3 },
+    { q: "歡「蹦」亂跳", opts: ["ㄅㄥ", "ㄅㄥˊ", "ㄅㄥˋ", "ㄅㄥˇ"], ans: 2 },
+    { q: "財匱力「絀」", opts: ["ㄔㄨˊ", "ㄔㄨˇ", "ㄔㄨˋ", "ㄔㄨ"], ans: 2 },
+    { q: "天「假」之年", opts: ["ㄐㄧㄚ", "ㄐㄧㄚˇ", "ㄐㄧㄚˊ", "ㄐㄧㄚˋ"], ans: 1 },
+    { q: "龍騰虎「躍」", opts: ["ㄩㄝ", "ㄩㄝˊ", "ㄩㄝˇ", "ㄩㄝˋ"], ans: 3 },
+    { q: "「要」言不煩", opts: ["ㄧㄠˇ", "ㄧㄠˊ", "ㄧㄠ", "ㄧㄠˋ"], ans: 3 },
+    { q: "「參」與計謀", opts: ["ㄩˋ", "ㄩˊ", "ㄩ", "ㄩˇ"], ans: 0 },
+    { q: "街道巷「弄」", opts: ["ㄌㄨㄥ", "ㄌㄨㄥˋ", "ㄌㄨㄥˇ", "ㄌㄨㄥˊ"], ans: 1 },
+    { q: "君子「好」逑", opts: ["ㄏㄠˊ", "ㄏㄠˋ", "ㄏㄠ", "ㄏㄠˇ"], ans: 3 },
+    { q: "「嫵」媚動人", opts: ["ㄨˊ", "ㄨˋ", "ㄨ", "ㄨˇ"], ans: 3 },
+    { q: "家「累」沉重", opts: ["ㄌㄟ", "ㄌㄟˊ", "ㄌㄟˋ", "ㄌㄟˇ"], ans: 2 },
+    { q: "炭「疽」病毒", opts: ["ㄐㄩˋ", "ㄐㄩˊ", "ㄐㄩˇ", "ㄐㄩ"], ans: 3 },
+    { q: "光之「穹」頂", opts: ["ㄑㄩㄥˋ", "ㄑㄩㄥ", "ㄑㄩㄥˇ", "ㄑㄩㄥˊ"], ans: 1 },
+    { q: "一年半「載」", opts: ["ㄗㄞˋ", "ㄗㄞˊ", "ㄗㄞ", "ㄗㄞˇ"], ans: 3 },
+    { q: "「叨」陪末座", opts: ["ㄊㄠˋ", "ㄊㄠˊ", "ㄊㄠ", "ㄊㄠˇ"], ans: 2 },
+    { q: "博聞「強」記", opts: ["ㄑㄧㄤˊ", "ㄑㄧㄤˇ", "ㄑㄧㄤ", "ㄑㄧㄤˋ"], ans: 0 },
+    { q: "「削」方為圓", opts: ["ㄒㄩㄝˇ", "ㄒㄩㄝ", "ㄒㄩㄝˊ", "ㄒㄩㄝˋ"], ans: 3 },
+    { q: "「瞄」了一眼", opts: ["ㄇㄧㄠˊ", "ㄇㄧㄠ", "ㄇㄧㄠˇ", "ㄇㄧㄠˋ"], ans: 0 },
+    { q: "「挑」燈夜戰", opts: ["ㄊㄧㄠˋ", "ㄊㄧㄠ", "ㄊㄧㄠˊ", "ㄊㄧㄠˇ"], ans: 3 },
+    { q: "「崖」岸自高", opts: ["ㄧㄞˋ", "ㄧㄞˇ", "ㄧㄞ", "ㄧㄞˊ"], ans: 3 },
+    { q: "「風」世勵俗", opts: ["ㄈㄥˋ", "ㄈㄥˊ", "ㄈㄥ", "ㄈㄥˇ"], ans: 0 },
+    { q: "「量」材器使", opts: ["ㄌㄧㄤˊ", "ㄌㄧㄤ", "ㄌㄧㄤˇ", "ㄌㄧㄤˋ"], ans: 3 },
+    { q: "「拗」曲作直", opts: ["ㄠ", "ㄠˋ", "ㄠˇ", "ㄠˊ"], ans: 2 },
+    { q: "「倒」果為因", opts: ["ㄉㄠˇ", "ㄉㄠˊ", "ㄉㄠˋ", "ㄉㄠ"], ans: 2 },
+    { q: "虛「應」故事", opts: ["ㄧㄥˋ", "ㄧㄥ", "ㄧㄥˊ", "ㄧㄥˇ"], ans: 0 },
+    { q: "「搽」脂抹粉", opts: ["ㄔㄚ", "ㄔㄚˊ", "ㄔㄚˋ", "ㄔㄚˇ"], ans: 1 },
+    { q: "「予」取予求", opts: ["ㄩ", "ㄩˋ", "ㄩˊ", "ㄩˇ"], ans: 2 },
+    // === 試卷 C (201-300) ===
+    { q: "依「偎」", opts: ["ㄨㄟˇ", "ㄨㄟˋ", "ㄨㄟˊ", "ㄨㄟ"], ans: 3 },
+    { q: "朝「乾」夕惕", opts: ["ㄑㄧㄢˊ", "ㄑㄧㄢ", "ㄑㄧㄢˋ", "ㄑㄧㄢˇ"], ans: 0 },
+    { q: "牽「強」附會", opts: ["ㄑㄧㄤˊ", "ㄑㄧㄤˋ", "ㄑㄧㄤ", "ㄑㄧㄤˇ"], ans: 3 },
+    { q: "模「稜」兩可", opts: ["ㄌㄥ", "ㄌㄥˇ", "ㄌㄥˊ", "ㄌㄥˋ"], ans: 2 },
+    { q: "金石可「鏤」", opts: ["ㄌㄡ", "ㄌㄡˊ", "ㄌㄡˋ", "ㄌㄡˇ"], ans: 2 },
+    { q: "過「分」渲染", opts: ["ㄈㄣˊ", "ㄈㄣˋ", "ㄈㄣ", "ㄈㄣˇ"], ans: 1 },
+    { q: "罪惡淵「藪」", opts: ["ㄙㄡˋ", "ㄙㄡˇ", "ㄙㄡ", "ㄙㄡˊ"], ans: 1 },
+    { q: "見微知「著」", opts: ["ㄓㄨ", "ㄓㄨˊ", "ㄓㄨˋ", "ㄓㄨˇ"], ans: 2 },
+    { q: "「扎」穩根基", opts: ["ㄓㄚˇ", "ㄓㄚˊ", "ㄓㄚ", "ㄓㄚˋ"], ans: 2 },
+    { q: "「炙」手可熱", opts: ["ㄓ", "ㄓˇ", "ㄓˋ", "ㄓˊ"], ans: 2 },
+    { q: "撲「朔」迷離", opts: ["ㄕㄨㄛˋ", "ㄕㄨㄛˇ", "ㄕㄨㄛˊ", "ㄕㄨㄛ"], ans: 0 },
+    { q: "槓「桿」原理", opts: ["ㄍㄢˊ", "ㄍㄢˇ", "ㄍㄢ", "ㄍㄢˋ"], ans: 1 },
+    { q: "「鍥」而不捨", opts: ["ㄑㄧㄝˇ", "ㄑㄧㄝ", "ㄑㄧㄝˋ", "ㄑㄧㄝˊ"], ans: 2 },
+    { q: "「牝」雞司晨", opts: ["ㄆㄧㄣˇ", "ㄆㄧㄣˊ", "ㄆㄧㄣ", "ㄆㄧㄣˋ"], ans: 3 },
+    { q: "「數」典忘祖", opts: ["ㄕㄨˇ", "ㄕㄨˋ", "ㄕㄨ", "ㄕㄨˊ"], ans: 0 },
+    { q: "獎「懲」紀錄", opts: ["ㄔㄥ", "ㄔㄥˇ", "ㄔㄥˋ", "ㄔㄥˊ"], ans: 3 },
+    { q: "水流「湍」急", opts: ["ㄊㄨㄢˋ", "ㄊㄨㄢˊ", "ㄊㄨㄢˇ", "ㄊㄨㄢ"], ans: 3 },
+    { q: "「冠」蓋雲集", opts: ["ㄍㄨㄢˇ", "ㄍㄨㄢˋ", "ㄍㄨㄢ", "ㄍㄨㄢˊ"], ans: 2 },
+    { q: "「舂」米", opts: ["ㄔㄨㄥˇ", "ㄔㄨㄥˋ", "ㄔㄨㄥ", "ㄔㄨㄥˊ"], ans: 2 },
+    { q: "「戳」穿", opts: ["ㄔㄨㄛˊ", "ㄔㄨㄛ", "ㄔㄨㄛˇ", "ㄔㄨㄛˋ"], ans: 1 },
+    { q: "罰「鍰」", opts: ["ㄏㄨㄢ", "ㄏㄨㄢˊ", "ㄏㄨㄢˋ", "ㄏㄨㄢˇ"], ans: 1 },
+    { q: "「惋」惜", opts: ["ㄨㄢ", "ㄨㄢˊ", "ㄨㄢˇ", "ㄨㄢˋ"], ans: 3 },
+    { q: "葳「蕤」", opts: ["ㄖㄨㄟˋ", "ㄖㄨㄟˊ", "ㄖㄨㄟˇ", "ㄖㄨㄟ"], ans: 1 },
+    { q: "「撒」嬌", opts: ["ㄙㄚˇ", "ㄙㄚˋ", "ㄙㄚ", "ㄙㄚˊ"], ans: 2 },
+    { q: "「尾」巴", opts: ["ㄨㄟˇ", "ㄨㄟˊ", "ㄨㄟ", "ㄨㄟˋ"], ans: 0 },
+    { q: "「罹」難", opts: ["ㄌㄧˇ", "ㄌㄧˊ", "ㄌㄧˋ", "ㄌㄧ"], ans: 1 },
+    { q: "相「稱」", opts: ["ㄔㄣ", "ㄔㄣˇ", "ㄔㄣˊ", "ㄔㄣˋ"], ans: 3 },
+    { q: "「喝」斥", opts: ["ㄏㄜˊ", "ㄏㄜˇ", "ㄏㄜˋ", "ㄏㄜ"], ans: 2 },
+    { q: "箭「簇」", opts: ["ㄘㄨˇ", "ㄘㄨˋ", "ㄘㄨ", "ㄘㄨˊ"], ans: 1 },
+    { q: "抖「擞」", opts: ["ㄙㄡˊ", "ㄙㄡ", "ㄙㄡˇ", "ㄙㄡˋ"], ans: 2 },
+    { q: "湯「勺」", opts: ["ㄕㄠ", "ㄕㄠˊ", "ㄕㄠˇ", "ㄕㄠˋ"], ans: 1 },
+    { q: "「塑」造", opts: ["ㄙㄨˇ", "ㄙㄨ", "ㄙㄨˋ", "ㄙㄨˊ"], ans: 2 },
+    { q: "「炸」年糕", opts: ["ㄓㄚˊ", "ㄓㄚ", "ㄓㄚˋ", "ㄓㄚˇ"], ans: 0 },
+    { q: "遭蹂「躪」", opts: ["ㄌㄧㄣˊ", "ㄌㄧㄣˇ", "ㄌㄧㄣˋ", "ㄌㄧㄣ"], ans: 2 },
+    { q: "「嗑」瓜子", opts: ["ㄎㄜˋ", "ㄎㄜ", "ㄎㄜˊ", "ㄎㄜˇ"], ans: 0 },
+    { q: "「蚵」仔煎", opts: ["ㄜˊ", "ㄜˋ", "ㄜˇ", "ㄜ"], ans: 0 },
+    { q: "「癩」蝦蟆", opts: ["ㄌㄞˋ", "ㄌㄞ", "ㄌㄞˇ", "ㄌㄞˊ"], ans: 0 },
+    { q: "渾天「儀」", opts: ["ㄧˋ", "ㄧˊ", "ㄧˇ", "ㄧ"], ans: 1 },
+    { q: "「茄」冬樹", opts: ["ㄐㄧㄚˊ", "ㄐㄧㄚ", "ㄐㄧㄚˇ", "ㄐㄧㄚˋ"], ans: 1 },
+    { q: "「宥」坐器", opts: ["ㄧㄡ", "ㄧㄡˋ", "ㄧㄡˇ", "ㄧㄡˊ"], ans: 1 },
+    { q: "緊「箍」咒", opts: ["ㄍㄨˊ", "ㄍㄨˇ", "ㄍㄨ", "ㄍㄨˋ"], ans: 2 },
+    { q: "穿「簑」衣", opts: ["ㄙㄨㄛ", "ㄙㄨㄛˇ", "ㄙㄨㄛˋ", "ㄙㄨㄛˊ"], ans: 0 },
+    { q: "滿目瘡「痍」", opts: ["ㄧˇ", "ㄧˋ", "ㄧ", "ㄧˊ"], ans: 3 },
+    { q: "「拎」著菜籃", opts: ["ㄌㄧㄥˋ", "ㄌㄧㄥ", "ㄌㄧㄥˊ", "ㄌㄧㄥˇ"], ans: 1 },
+    { q: "「朋」比為奸", opts: ["ㄆㄥˋ", "ㄆㄥˊ", "ㄆㄥ", "ㄆㄥˇ"], ans: 1 },
+    { q: "文學「瑰」寶", opts: ["ㄍㄨㄟˇ", "ㄍㄨㄟˋ", "ㄍㄨㄟˊ", "ㄍㄨㄟ"], ans: 3 },
+    { q: "不「諳」事務", opts: ["ㄢ", "ㄢˊ", "ㄢˋ", "ㄢˇ"], ans: 0 },
+    { q: "血管堵「塞」", opts: ["ㄙㄜ", "ㄙㄜˊ", "ㄙㄜˇ", "ㄙㄜˋ"], ans: 3 },
+    { q: "血管「迸」裂", opts: ["ㄅㄥˇ", "ㄅㄥˊ", "ㄅㄥˋ", "ㄅㄥ"], ans: 2 },
+    { q: "人謀不「臧」", opts: ["ㄗㄤ", "ㄗㄤˊ", "ㄗㄤˋ", "ㄗㄤˇ"], ans: 0 },
+    { q: "傾「瀉」而出", opts: ["ㄒㄧㄝˇ", "ㄒㄧㄝˊ", "ㄒㄧㄝˋ", "ㄒㄧㄝ"], ans: 2 },
+    { q: "特殊「癖」好", opts: ["ㄆㄧˋ", "ㄆㄧ", "ㄆㄧˊ", "ㄆㄧˇ"], ans: 3 },
+    { q: "「逾」時不候", opts: ["ㄩˋ", "ㄩ", "ㄩˊ", "ㄩˇ"], ans: 2 },
+    { q: "寒風「瑟」縮", opts: ["ㄙㄜˇ", "ㄙㄜˋ", "ㄙㄜˊ", "ㄙㄜ"], ans: 1 },
+    { q: "「諱」疾忌醫", opts: ["ㄏㄨㄟˋ", "ㄏㄨㄟˊ", "ㄏㄨㄟˇ", "ㄏㄨㄟ"], ans: 0 },
+    { q: "「幡」然悔悟", opts: ["ㄈㄢˋ", "ㄈㄢˇ", "ㄈㄢ", "ㄈㄢˊ"], ans: 2 },
+    { q: "法國巴「黎」", opts: ["ㄌㄧˇ", "ㄌㄧˊ", "ㄌㄧ", "ㄌㄧˋ"], ans: 1 },
+    { q: "敝「帚」千金", opts: ["ㄓㄡˋ", "ㄓㄡˇ", "ㄓㄡ", "ㄓㄡˊ"], ans: 1 },
+    { q: "疏「濬」河道", opts: ["ㄐㄩㄣˋ", "ㄐㄩㄣˇ", "ㄐㄩㄣ", "ㄐㄩㄣˊ"], ans: 0 },
+    { q: "乘「槎」而來", opts: ["ㄔㄚˊ", "ㄔㄚ", "ㄔㄚˇ", "ㄔㄚˋ"], ans: 0 },
+    { q: "「愣」頭愣腦", opts: ["ㄌㄥˋ", "ㄌㄥˇ", "ㄌㄥ", "ㄌㄥˊ"], ans: 0 },
+    { q: "感「慨」萬千", opts: ["ㄎㄞˋ", "ㄎㄞˊ", "ㄎㄞˇ", "ㄎㄞ"], ans: 2 },
+    { q: "十分「惬」意", opts: ["ㄑㄧㄝˊ", "ㄑㄧㄝˋ", "ㄑㄧㄝ", "ㄑㄧㄝˇ"], ans: 1 },
+    { q: "一「幀」圖畫", opts: ["ㄓㄥˇ", "ㄓㄥˊ", "ㄓㄥ", "ㄓㄥˋ"], ans: 3 },
+    { q: "訂婚請「東」", opts: ["ㄉㄨㄥˋ", "ㄉㄨㄥ", "ㄉㄨㄥˊ", "ㄉㄨㄥˇ"], ans: 1 },
+    { q: "火「候」不夠", opts: ["ㄏㄡˇ", "ㄏㄡˊ", "ㄏㄡ", "ㄏㄡˋ"], ans: 3 },
+    { q: "煙嵐雲「岫」", opts: ["ㄒㄧㄡ", "ㄒㄧㄡˊ", "ㄒㄧㄡˇ", "ㄒㄧㄡˋ"], ans: 3 },
+    { q: "韶光「荏」苒", opts: ["ㄖㄣˇ", "ㄖㄣ", "ㄖㄣˋ", "ㄖㄣˊ"], ans: 0 },
+    { q: "晶瑩「剔」透", opts: ["ㄊㄧˋ", "ㄊㄧˇ", "ㄊㄧˊ", "ㄊㄧ"], ans: 3 },
+    { q: "「播」放音樂", opts: ["ㄅㄛ", "ㄅㄛˇ", "ㄅㄛˊ", "ㄅㄛˋ"], ans: 3 },
+    { q: "從優撫「卹」", opts: ["ㄒㄩˇ", "ㄒㄩˊ", "ㄒㄩˋ", "ㄒㄩ"], ans: 2 },
+    { q: "清新「雋」永", opts: ["ㄐㄩㄢˇ", "ㄐㄩㄢ", "ㄐㄩㄢˋ", "ㄐㄩㄢˊ"], ans: 2 },
+    { q: "「撇」開不談", opts: ["ㄆㄧㄝ", "ㄆㄧㄝˋ", "ㄆㄧㄝˊ", "ㄆㄧㄝˇ"], ans: 0 },
+    { q: "白「熾」電燈", opts: ["ㄔˋ", "ㄔˇ", "ㄔˊ", "ㄔ"], ans: 0 },
+    { q: "語帶「諷」刺", opts: ["ㄈㄥˋ", "ㄈㄥˊ", "ㄈㄥˇ", "ㄈㄥ"], ans: 0 },
+    { q: "「挑」燈夜戰", opts: ["ㄊㄧㄠˊ", "ㄊㄧㄠˇ", "ㄊㄧㄠˋ", "ㄊㄧㄠ"], ans: 1 },
+    { q: "「玳」瑁寶玉", opts: ["ㄉㄞˋ", "ㄉㄞ", "ㄉㄞˊ", "ㄉㄞˇ"], ans: 0 },
+    { q: "男媒女「妁」", opts: ["ㄕㄨㄛˋ", "ㄕㄨㄛ", "ㄕㄨㄛˊ", "ㄕㄨㄛˇ"], ans: 0 },
+    { q: "「蹙」眉不語", opts: ["ㄘㄨˊ", "ㄘㄨˇ", "ㄘㄨ", "ㄘㄨˋ"], ans: 3 },
+    { q: "藥石鍼「砭」", opts: ["ㄅㄧㄢ", "ㄅㄧㄢˊ", "ㄅㄧㄢˇ", "ㄅㄧㄢˋ"], ans: 0 },
+    { q: "屏東「枋」寮", opts: ["ㄈㄤ", "ㄈㄤˇ", "ㄈㄤˋ", "ㄈㄤˊ"], ans: 0 },
+    { q: "「翹」首引領", opts: ["ㄑㄧㄠˊ", "ㄑㄧㄠ", "ㄑㄧㄠˇ", "ㄑㄧㄠˋ"], ans: 0 },
+    { q: "吃大「閘」蟹", opts: ["ㄓㄚˋ", "ㄓㄚˊ", "ㄓㄚ", "ㄓㄚˇ"], ans: 1 },
+    { q: "「顴」骨高聳", opts: ["ㄑㄩㄢˊ", "ㄑㄩㄢ", "ㄑㄩㄢˇ", "ㄑㄩㄢˋ"], ans: 0 },
+    { q: "「豢」養子弟", opts: ["ㄏㄨㄢ", "ㄏㄨㄢˋ", "ㄏㄨㄢˇ", "ㄏㄨㄢˊ"], ans: 1 },
+    { q: "簽「署」條約", opts: ["ㄕㄨ", "ㄕㄨˊ", "ㄕㄨˋ", "ㄕㄨˇ"], ans: 2 },
+    { q: "興味「盎」然", opts: ["ㄤˊ", "ㄤ", "ㄤˇ", "ㄤˋ"], ans: 3 },
+    { q: "「惴」惴不安", opts: ["ㄓㄨㄟ", "ㄓㄨㄟˇ", "ㄓㄨㄟˋ", "ㄓㄨㄟˊ"], ans: 2 },
+    { q: "彊「弩」之末", opts: ["ㄋㄨˇ", "ㄋㄨˋ", "ㄋㄨˊ", "ㄋㄨ"], ans: 0 },
+    { q: "頭「暈」眼花", opts: ["ㄩㄣ", "ㄩㄣˋ", "ㄩㄣˊ", "ㄩㄣˇ"], ans: 0 },
+    { q: "「咳」聲嘆氣", opts: ["ㄏㄞˋ", "ㄏㄞ", "ㄏㄞˊ", "ㄏㄞˇ"], ans: 1 },
+    { q: "「踉」蹌不穩", opts: ["ㄌㄧㄤˇ", "ㄌㄧㄤ", "ㄌㄧㄤˋ", "ㄌㄧㄤˊ"], ans: 2 },
+    { q: "「攘」外安內", opts: ["ㄖㄤ", "ㄖㄤˇ", "ㄖㄤˊ", "ㄖㄤˋ"], ans: 1 },
+    { q: "「揠」苗助長", opts: ["ㄧㄚˊ", "ㄧㄚˋ", "ㄧㄚ", "ㄧㄚˇ"], ans: 1 },
+    { q: "大肆咆「哮」", opts: ["ㄒㄧㄠˋ", "ㄒㄧㄠˊ", "ㄒㄧㄠˇ", "ㄒㄧㄠ"], ans: 3 },
+    { q: "情真意「摯」", opts: ["ㄓˇ", "ㄓ", "ㄓˋ", "ㄓˊ"], ans: 2 },
+    { q: "胼手「胝」足", opts: ["ㄓˊ", "ㄓˇ", "ㄓ", "ㄓˋ"], ans: 2 },
+    { q: "「沁」人心脾", opts: ["ㄑㄧㄣˇ", "ㄑㄧㄣˋ", "ㄑㄧㄣ", "ㄑㄧㄣˊ"], ans: 1 },
+    { q: "針「砭」時弊", opts: ["ㄅㄧㄢˇ", "ㄅㄧㄢˊ", "ㄅㄧㄢˋ", "ㄅㄧㄢ"], ans: 3 },
+    { q: "一針見「血」", opts: ["ㄒㄧㄝ", "ㄒㄧㄝˋ", "ㄒㄧㄝˇ", "ㄒㄧㄝˊ"], ans: 2 }
+];
 
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-8px); }
-            75% { transform: translateX(8px); }
-        }
-
-        .right-writing {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            align-items: center;
-            justify-content: center;
-        }
-        .writing-modes { display: flex; gap: 10px; }
-        .writing-modes button {
-            padding: 8px 20px;
-            font-size: 18px;
-            font-weight: bold;
-            border: 3px solid var(--card-border);
-            border-radius: 12px;
-            background: white;
-            color: var(--theme-green);
-            cursor: pointer;
-        }
-        .writing-modes button.active {
-            background: var(--theme-green); color: white; border-color: var(--theme-green);
-        }
-        .writing-area-wrapper {
-            background: white;
-            border: 4px solid var(--card-border);
-            border-radius: 20px;
-            width: 300px; height: 300px; 
-            position: relative;
-            box-shadow: 0 8px 15px rgba(0,0,0,0.05);
-            overflow: hidden;
-            background-image: 
-                linear-gradient(45deg, transparent 49%, rgba(128,208,138,0.3) 49%, rgba(128,208,138,0.3) 51%, transparent 51%),
-                linear-gradient(-45deg, transparent 49%, rgba(128,208,138,0.3) 49%, rgba(128,208,138,0.3) 51%, transparent 51%),
-                linear-gradient(to right, transparent 49.5%, rgba(128,208,138,0.6) 49.5%, rgba(128,208,138,0.6) 50.5%, transparent 50.5%),
-                linear-gradient(to bottom, transparent 49.5%, rgba(128,208,138,0.6) 49.5%, rgba(128,208,138,0.6) 50.5%, transparent 50.5%);
-        }
-        #hanzi-writer-target, #blank-canvas {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-        }
-        .writing-actions { display: flex; gap: 15px; width: 300px; }
-        .action-btn {
-            flex: 1; padding: 12px; font-size: 18px; font-weight: bold;
-            border: none; border-radius: 12px; cursor: pointer; color: white; transition: 0.2s;
-        }
-        .btn-clear { background: #95a5a6; }
-        .btn-recognize { background: #F39C12; }
-        
-        /* 錯題本與結算區通用 */
-        .summary-view {
-            flex-direction: column;
-            background: white;
-            border: 5px solid var(--card-border);
-            border-radius: 25px;
-            padding: 20px 40px;
-            width: 100%;
-            overflow-y: auto;
-        }
-        .summary-header {
-            display: flex; justify-content: space-between; align-items: center; width: 100%;
-            border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 15px;
-        }
-        .summary-title { font-size: 28px; color: var(--theme-green); font-weight: bold; margin: 0; }
-        .btn-practice { background: var(--theme-green); color: white; padding: 10px 20px; font-size: 18px; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; }
-        
-        .mistake-columns { display: flex; gap: 20px; width: 100%; }
-        .mistake-col { flex: 1; background: #fdfdfd; border: 2px dashed #ccc; border-radius: 15px; padding: 15px; height: 350px; overflow-y: auto; }
-        .mistake-col h3 { text-align: center; color: var(--text-dark); margin-top: 0; }
-        
-        .mistake-list { display: flex; flex-direction: column; gap: 10px; }
-        .mistake-item { background: #ffeaa7; color: #d35400; padding: 10px 15px; border-radius: 8px; font-size: 18px; font-weight: bold; display: flex; justify-content: space-between; }
-        .empty-msg { text-align: center; color: #999; font-weight: bold; margin-top: 50px; }
-    </style>
-</head>
-<body>
-
-    <header>
-        <div class="header-title">✏️ 字音字形</div>
-        <div class="header-controls">
-            <button class="sys-btn" onclick="saveData(true)">💾 儲存進度</button>
-            <button class="sys-btn danger" onclick="resetAll()">🔄 重新開始</button>
-            
-            <div class="mode-toggle" style="margin-left: 10px;">
-                <button id="tab-pinyin" class="active" onclick="switchTab('pinyin')">字音</button>
-                <button id="tab-writing" onclick="switchTab('writing')">字形</button>
-                <button id="tab-notebook" onclick="switchTab('notebook')">錯題本</button>
-            </div>
-            <div class="score-badge">⭐ <span id="score-display">0</span></div>
-        </div>
-    </header>
-
-    <main>
-        <!-- 讀音練習區 -->
-        <div id="pinyin-container" class="container active">
-            <div class="left-card">
-                <div class="mistake-mode-badge" id="pinyin-mistake-badge">錯題複習模式</div>
-                <div class="instruction-text">請選出正確的讀音</div>
-                <div class="main-question" id="pinyin-q"></div>
-                <div class="progress-text" id="pinyin-progress"></div>
-            </div>
-            <div class="right-grid">
-                <button class="option-btn" id="pinyin-opt0" onclick="checkPinyin(0)"></button>
-                <button class="option-btn" id="pinyin-opt1" onclick="checkPinyin(1)"></button>
-                <button class="option-btn" id="pinyin-opt2" onclick="checkPinyin(2)"></button>
-                <button class="option-btn" id="pinyin-opt3" onclick="checkPinyin(3)"></button>
-            </div>
-        </div>
-
-        <!-- 字形練習區 -->
-        <div id="writing-container" class="container">
-            <div class="left-card">
-                <div class="mistake-mode-badge" id="writing-mistake-badge">錯題複習模式</div>
-                <div class="instruction-text">請根據注音寫出正確的字形</div>
-                <div class="main-question" id="writing-q"></div>
-                <div class="progress-text" id="writing-progress"></div>
-            </div>
-            <div class="right-writing">
-                <div class="writing-modes">
-                    <button id="mode-blank" class="active" onclick="setWritingMode('blank')">空白挑戰</button>
-                    <button id="mode-hint" onclick="setWritingMode('hint')">提示描紅</button>
-                </div>
-                <div class="writing-area-wrapper">
-                    <div id="hanzi-writer-target" style="display: none;"></div>
-                    <canvas id="blank-canvas" width="300" height="300" style="touch-action: none;"></canvas>
-                </div>
-                <div class="writing-actions">
-                    <button class="action-btn btn-clear" onclick="clearCanvas()">清除重寫</button>
-                    <button class="action-btn btn-recognize" id="btn-recognize" onclick="recognizeHandwriting()">辨識送出</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- 錯題本與結算區 -->
-        <div id="notebook-container" class="container summary-view">
-            <div class="summary-header">
-                <h2 class="summary-title">📖 專屬錯題本</h2>
-                <div style="font-size: 18px; font-weight:bold; color: var(--text-gray);">
-                    總分：<span id="notebook-score"></span>
-                </div>
-            </div>
-            
-            <div class="mistake-columns">
-                <!-- 字音錯題 -->
-                <div class="mistake-col">
-                    <h3>🗣️ 字音錯題</h3>
-                    <div style="text-align: center; margin-bottom: 10px;">
-                        <button class="btn-practice" onclick="startMistakePractice('pinyin')">開始字音錯題練習</button>
-                    </div>
-                    <div class="mistake-list" id="pinyin-mistake-list"></div>
-                </div>
-                
-                <!-- 字形錯題 -->
-                <div class="mistake-col">
-                    <h3>✍️ 字形錯題 (含描紅)</h3>
-                    <div style="text-align: center; margin-bottom: 10px;">
-                        <button class="btn-practice" onclick="startMistakePractice('writing')">開始字形錯題練習</button>
-                    </div>
-                    <div class="mistake-list" id="writing-mistake-list"></div>
-                </div>
-            </div>
-        </div>
-    </main>
-
-    <script>
-        // --- 系統設定 ---
-        // 調整手寫文字鑑定嚴格度：
-        // 1  = 嚴格模式（手寫字必須與 API 辨識的第一順位完全相符）
-        // 3  = 中等模式（手寫字只要落在 API 辨識的前 3 名內即算正確）
-        // 10 = 寬鬆模式（只要 API 覺得有任何可能是該字就算對，也是原本預設的行為）
-        const RECOGNITION_STRICTNESS = 1; 
-
-        // --- 核心狀態管理 ---
-        let totalScore = 0;
-        let state = {
-            pinyin: { index: 0, mistakes: new Set() },
-            writing: { index: 0, mistakes: new Set() }
-        };
-
-        // 練習模式狀態
-        let session = {
-            mode: 'normal', // 'normal' 或 'mistake'
-            type: 'pinyin', // 'pinyin' 或 'writing'
-            mistakeQueue: [], // 錯題模式下要練習的題目索引陣列
-            queueIndex: 0,
-            answered: false,
-            writingMode: 'blank'
-        };
-
-        let writer = null;
-
-        // --- 初始化與存檔系統 ---
-        window.onload = () => {
-            if (typeof pinyinData === 'undefined' || typeof writingData === 'undefined') {
-                alert("找不到題庫檔案 questions.js，請確認檔案位置。");
-                return;
-            }
-            loadData(); // 載入本地進度
-            switchTab('pinyin');
-        };
-
-        function loadData() {
-            const saved = localStorage.getItem('shulin_practice_v2');
-            if (saved) {
-                const data = JSON.parse(saved);
-                totalScore = data.score || 0;
-                state.pinyin.index = data.pinyinIndex || 0;
-                state.writing.index = data.writingIndex || 0;
-                state.pinyin.mistakes = new Set(data.pinyinMistakes || []);
-                state.writing.mistakes = new Set(data.writingMistakes || []);
-            }
-        }
-
-        function saveData(showMsg = false) {
-            const data = {
-                score: totalScore,
-                pinyinIndex: state.pinyin.index,
-                writingIndex: state.writing.index,
-                pinyinMistakes: Array.from(state.pinyin.mistakes),
-                writingMistakes: Array.from(state.writing.mistakes)
-            };
-            localStorage.setItem('shulin_practice_v2', JSON.stringify(data));
-            if (showMsg) alert('進度已成功儲存！下次開啟將自動載入。');
-        }
-
-        function resetAll() {
-            if (confirm('確定要清除所有進度、分數與錯題紀錄，重新開始嗎？\n(此動作無法復原)')) {
-                localStorage.removeItem('shulin_practice_v2');
-                location.reload();
-            }
-        }
-
-        // --- 介面切換 ---
-        function switchTab(tab) {
-            // 切換分頁時，回到正常模式
-            session.mode = 'normal';
-            session.type = tab === 'notebook' ? 'notebook' : tab;
-            
-            document.getElementById('tab-pinyin').classList.toggle('active', tab === 'pinyin');
-            document.getElementById('tab-writing').classList.toggle('active', tab === 'writing');
-            document.getElementById('tab-notebook').classList.toggle('active', tab === 'notebook');
-            
-            document.getElementById('pinyin-container').classList.remove('active');
-            document.getElementById('writing-container').classList.remove('active');
-            document.getElementById('notebook-container').classList.remove('active');
-
-            if (tab === 'notebook') {
-                document.getElementById('notebook-container').classList.add('active');
-                renderNotebook();
-            } else {
-                document.getElementById(tab + '-container').classList.add('active');
-                if (tab === 'pinyin') loadPinyinQuestion();
-                else {
-                    setWritingMode(session.writingMode);
-                    initWritingQuestion();
-                }
-            }
-            updateProgress();
-            saveData(false); // 自動背景存檔
-        }
-
-        function updateProgress() {
-            document.getElementById('score-display').innerText = totalScore;
-            document.getElementById('notebook-score').innerText = totalScore;
-
-            if (session.type === 'notebook') return;
-
-            const isMistake = (session.mode === 'mistake');
-            document.getElementById(`${session.type}-mistake-badge`).style.display = isMistake ? 'block' : 'none';
-
-            const progEl = document.getElementById(`${session.type}-progress`);
-            if (isMistake) {
-                progEl.innerText = `錯題複習：第 ${session.queueIndex + 1} 題 / 共 ${session.mistakeQueue.length} 題`;
-            } else {
-                const max = session.type === 'pinyin' ? pinyinData.length : writingData.length;
-                progEl.innerText = `正常進度：第 ${state[session.type].index + 1} 題 / 共 ${max} 題`;
-            }
-        }
-
-        function getCurrentIndex() {
-            return session.mode === 'mistake' ? session.mistakeQueue[session.queueIndex] : state[session.type].index;
-        }
-
-        function goNextQuestion() {
-            if (session.mode === 'mistake') {
-                session.queueIndex++;
-                if (session.queueIndex >= session.mistakeQueue.length) {
-                    alert('恭喜！本次錯題練習完成！');
-                    switchTab('notebook');
-                    return;
-                }
-            } else {
-                state[session.type].index++;
-                const max = session.type === 'pinyin' ? pinyinData.length : writingData.length;
-                if (state[session.type].index >= max) {
-                    alert('恭喜！本大題所有題目已全部練習完畢！');
-                    switchTab('notebook');
-                    return;
-                }
-            }
-
-            setTimeout(() => {
-                if (session.type === 'pinyin') loadPinyinQuestion();
-                else {
-                    setWritingMode('blank');
-                    initWritingQuestion();
-                }
-                updateProgress();
-                saveData(false);
-            }, 800);
-        }
-
-        // --- 錯題本邏輯 ---
-        function renderNotebook() {
-            const pList = document.getElementById('pinyin-mistake-list');
-            const wList = document.getElementById('writing-mistake-list');
-            pList.innerHTML = ''; wList.innerHTML = '';
-
-            if (state.pinyin.mistakes.size === 0) pList.innerHTML = '<div class="empty-msg">太棒了！目前沒有字音錯題。</div>';
-            else {
-                state.pinyin.mistakes.forEach(idx => {
-                    const data = pinyinData[idx];
-                    pList.innerHTML += `<div class="mistake-item"><span>${data.q}</span> <span>${data.opts[data.ans]}</span></div>`;
-                });
-            }
-
-            if (state.writing.mistakes.size === 0) wList.innerHTML = '<div class="empty-msg">太棒了！目前沒有字形錯題。</div>';
-            else {
-                state.writing.mistakes.forEach(idx => {
-                    const data = writingData[idx];
-                    const cleanQ = data.q.replace(/\[(.*?)\]/, '（$1）');
-                    wList.innerHTML += `<div class="mistake-item"><span>${cleanQ}</span> <span>解答：${data.ans}</span></div>`;
-                });
-            }
-        }
-
-        function startMistakePractice(type) {
-            const mistakes = Array.from(state[type].mistakes);
-            if (mistakes.length === 0) {
-                alert('目前沒有錯題可以練習喔！');
-                return;
-            }
-            
-            session.mode = 'mistake';
-            session.type = type;
-            session.mistakeQueue = mistakes;
-            session.queueIndex = 0;
-
-            document.getElementById('notebook-container').classList.remove('active');
-            document.getElementById(type + '-container').classList.add('active');
-
-            if (type === 'pinyin') loadPinyinQuestion();
-            else {
-                setWritingMode('blank');
-                initWritingQuestion();
-            }
-            updateProgress();
-        }
-
-        // --- 讀音練習邏輯 ---
-        function loadPinyinQuestion() {
-            const idx = getCurrentIndex();
-            if (idx >= pinyinData.length) return;
-            const data = pinyinData[idx];
-            
-            document.getElementById('pinyin-q').innerText = data.q;
-            session.answered = false;
-            
-            for(let i=0; i<4; i++) {
-                const btn = document.getElementById('pinyin-opt' + i);
-                btn.innerText = data.opts[i];
-                btn.className = 'option-btn';
-            }
-        }
-
-        function checkPinyin(selected) {
-            if(session.answered) return;
-            const idx = getCurrentIndex();
-            const data = pinyinData[idx];
-            const btn = document.getElementById('pinyin-opt' + selected);
-            
-            if (selected === data.ans) {
-                btn.classList.add('correct');
-                totalScore += 10;
-                session.answered = true;
-                
-                // 若為錯題模式，答對就從錯題本移除
-                if (session.mode === 'mistake') {
-                    state.pinyin.mistakes.delete(idx);
-                }
-                
-                goNextQuestion();
-            } else {
-                btn.classList.add('wrong');
-                // 答錯加入錯題本 (Set會自動防重複)
-                state.pinyin.mistakes.add(idx);
-                saveData(false);
-                setTimeout(() => btn.classList.remove('wrong'), 500);
-            }
-        }
-
-        // --- 字形練習邏輯 ---
-        function setWritingMode(mode) {
-            session.writingMode = mode;
-            document.getElementById('mode-hint').classList.toggle('active', mode === 'hint');
-            document.getElementById('mode-blank').classList.toggle('active', mode === 'blank');
-            
-            const target = document.getElementById('hanzi-writer-target');
-            const canvas = document.getElementById('blank-canvas');
-            const btnRecog = document.getElementById('btn-recognize');
-
-            if (mode === 'hint') {
-                target.style.display = 'block'; canvas.style.display = 'none'; btnRecog.style.display = 'none';
-                initWritingQuestion();
-            } else {
-                target.style.display = 'none'; canvas.style.display = 'block'; btnRecog.style.display = 'inline-block';
-                clearCanvas();
-            }
-        }
-
-        function initWritingQuestion() {
-            const idx = getCurrentIndex();
-            if (idx >= writingData.length) return;
-            const data = writingData[idx];
-            
-            const displayQ = data.q.replace(/\[(.*?)\]/, '（<span class="zhuyin-highlight">$1</span>）');
-            document.getElementById('writing-q').innerHTML = displayQ;
-
-            if (session.writingMode === 'hint') {
-                document.getElementById('hanzi-writer-target').innerHTML = '';
-                writer = HanziWriter.create('hanzi-writer-target', data.ans, {
-                    width: 300, height: 300, padding: 20,
-                    showCharacter: false, showOutline: true,
-                    strokeAnimationSpeed: 2, delayBetweenStrokes: 50, outlineColor: '#bbb',
-                    // 修改：當字庫缺字時的處理方式
-                    onLoadCharDataError: function(reason) {
-                        alert(`開源字庫目前缺乏「${data.ans}」的描紅資料，已為您直接顯示字形。請觀察後自行點擊「空白挑戰」進行作答！`);
-                        
-                        // 直接在原區塊用灰底大字顯示解答字形
-                        const target = document.getElementById('hanzi-writer-target');
-                        target.innerHTML = `<div style="font-size: 220px; color: #bbb; display: flex; justify-content: center; align-items: center; width: 100%; height: 100%; user-select: none;">${data.ans}</div>`;
-                    }
-                });
-                writer.quiz({
-                    onComplete: function() {
-                        totalScore += 5; 
-                        // 看提示完成，一律加入錯題本
-                        state.writing.mistakes.add(idx);
-                        goNextQuestion();
-                    }
-                });
-            } else {
-                clearCanvas();
-            }
-        }
-
-        // --- Canvas 自由手寫 ---
-        const canvas = document.getElementById('blank-canvas');
-        const ctx = canvas.getContext('2d');
-        ctx.lineWidth = 8; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#1A2B3C';
-
-        let isDrawing = false, strokesData = [], currentStroke = [[], []];
-
-        function getCoordinates(e) {
-            const rect = canvas.getBoundingClientRect();
-            const clientX = e.clientX || (e.touches && e.touches[0].clientX);
-            const clientY = e.clientY || (e.touches && e.touches[0].clientY);
-            return { x: clientX - rect.left, y: clientY - rect.top };
-        }
-
-        function startDrawing(e) {
-            e.preventDefault(); isDrawing = true;
-            const pos = getCoordinates(e);
-            ctx.beginPath(); ctx.moveTo(pos.x, pos.y);
-            currentStroke = [[Math.round(pos.x)], [Math.round(pos.y)]];
-        }
-
-        function draw(e) {
-            if (!isDrawing) return;
-            e.preventDefault();
-            const pos = getCoordinates(e);
-            ctx.lineTo(pos.x, pos.y); ctx.stroke();
-            currentStroke[0].push(Math.round(pos.x)); currentStroke[1].push(Math.round(pos.y));
-        }
-
-        function stopDrawing() {
-            if (!isDrawing) return;
-            isDrawing = false;
-            if (currentStroke[0].length > 0) strokesData.push(currentStroke);
-        }
-
-        canvas.addEventListener('pointerdown', startDrawing); canvas.addEventListener('pointermove', draw);
-        canvas.addEventListener('pointerup', stopDrawing); canvas.addEventListener('pointerleave', stopDrawing);
-        canvas.addEventListener('touchstart', startDrawing, {passive: false}); canvas.addEventListener('touchmove', draw, {passive: false});
-        canvas.addEventListener('touchend', stopDrawing);
-
-        function clearCanvas() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height); strokesData = [];
-            if (writer && session.writingMode === 'hint') writer.quiz();
-        }
-
-        // --- API 辨識 ---
-        async function recognizeHandwriting() {
-            if (strokesData.length === 0) { alert('請先在空白處寫字喔！'); return; }
-
-            const idx = getCurrentIndex();
-            const data = writingData[idx];
-            const btnRecog = document.getElementById('btn-recognize');
-            btnRecog.disabled = true; btnRecog.innerText = '辨識中...';
-
-            const payload = {
-                "options": "enable_pre_space",
-                "requests": [{ "writing_guide": { "writing_area_width": 300, "writing_area_height": 300 }, "ink": strokesData, "language": "zh-TW" }]
-            };
-            const targetUrl = 'https://inputtools.google.com/request?ime=handwriting&app=mobilesearch&cs=1&oe=UTF-8';
-
-            try {
-                const response = await fetch(targetUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                if (!response.ok) throw new Error('網路回應錯誤');
-                const json = await response.json();
-                if (json[0] !== "SUCCESS") throw new Error('API 辨識失敗');
-
-                const results = json[1][0][1];
-                
-                // 根據嚴格度設定，截取要比對的候選字陣列
-                const checkResults = results.slice(0, RECOGNITION_STRICTNESS);
-                
-                if (checkResults.includes(data.ans)) {
-                    totalScore += 15;
-                    
-                    // 空白挑戰寫對，從錯題本中移除
-                    if (session.mode === 'mistake') {
-                        state.writing.mistakes.delete(idx);
-                    }
-
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
-                    ctx.fillStyle = '#20A045'; ctx.font = '120px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-                    ctx.fillText('⭕', canvas.width/2, canvas.height/2);
-                    goNextQuestion();
-                } else {
-                    alert(`系統認出來是：${results.slice(0, 3).join(', ')}。寫得不太對，請清除重寫！`);
-                    // 寫錯加入錯題本
-                    state.writing.mistakes.add(idx);
-                    saveData(false);
-                    clearCanvas();
-                }
-            } catch (err) {
-                console.error(err); alert('辨識連線失敗，請檢查網路狀態或稍後重試。');
-            } finally {
-                btnRecog.disabled = false; btnRecog.innerText = '辨識送出';
-            }
-        }
-    </script>
-</body>
-</html>
+// 字形題庫 (共 300 題，括號內為注音，將自動轉為拼音填空顯示)
+const writingData = [
+    // === 試卷 A (1-100) ===
+    { q: "[ㄉㄡ]風", ans: "兜" },
+    { q: "醫[ㄌㄧㄠˊ]人員", ans: "療" },
+    { q: "如[ㄍㄥˇ]在喉", ans: "鯁" },
+    { q: "[ㄎㄞˇ]甲", ans: "鎧" },
+    { q: "柴米油[ㄧㄢˊ]", ans: "鹽" },
+    { q: "頭[ㄎㄨㄟ]", ans: "盔" },
+    { q: "蟒[ㄕㄜˊ]", ans: "蛇" },
+    { q: "[鱷]魚", ans: "鱷" },
+    { q: "馳[ㄔㄥˇ]", ans: "騁" },
+    { q: "劍[ㄑ一ㄠˋ]", ans: "鞘" },
+    { q: "靦[ㄊ一ㄢˇ]", ans: "腆" },
+    { q: "[ㄐㄧˋ]覦", ans: "覬" },
+    { q: "[ㄠˊ]戰", ans: "鏖" },
+    { q: "[ㄓㄡˋ]紋", ans: "皺" },
+    { q: "方天畫[ㄐㄧˇ]", ans: "戟" },
+    { q: "堂[ㄍㄡˋ]增輝", ans: "構" },
+    { q: "[ㄋㄧㄝˋ]手躡腳", ans: "躡" },
+    { q: "獨佔[ㄠˊ]頭", ans: "鰲" },
+    { q: "居家快[ㄕㄞ]", ans: "篩" },
+    { q: "[ㄔㄨㄛ]破謊言", ans: "戳" },
+    { q: "[ㄑㄧㄠˋ]開門鎖", ans: "撬" },
+    { q: "[ㄐㄧ]童作法", ans: "乩" },
+    { q: "淺[ㄓㄣ]低唱", ans: "斟" },
+    { q: "剛[ㄅㄧˋ]自用", ans: "愎" },
+    { q: "骯髒齷[ㄔㄨㄛˋ]", ans: "齪" },
+    { q: "[ㄙ]髮之功", ans: "絲" },
+    { q: "阿[ㄩˊ]奉承", ans: "諛" },
+    { q: "憑空[ㄋㄧㄝ]造", ans: "捏" },
+    { q: "欲壑難[ㄊ一ㄢˊ]", ans: "填" },
+    { q: "堅[ㄖㄣˋ]不拔", ans: "韌" },
+    { q: "頂禮[ㄇㄛˊ]拜", ans: "膜" },
+    { q: "肥田[ㄨㄛˋ]地", ans: "沃" },
+    { q: "[ㄇㄥˊ]懂無知", ans: "懵" },
+    { q: "橫征暴[ㄌㄧㄢˋ]", ans: "斂" },
+    { q: "[ㄅㄧㄠ]形大漢", ans: "彪" },
+    { q: "室如懸[ㄑㄧㄥˋ]", ans: "磬" },
+    { q: "金[ㄅㄧˋ]輝煌", ans: "碧" },
+    { q: "立[ㄍㄨㄟˇ] 測影", ans: "晷" },
+    { q: "履[ㄌ一ˋ ]表", ans: "歷" },
+    { q: "[ㄍㄨㄞˇ]杖鎖", ans: "柺" },
+    { q: "三春[ㄏㄨㄟ]", ans: "暉" },
+    { q: "[ㄔㄣˊ]甸甸", ans: "沉" },
+    { q: "亮光[ㄌㄚˋ]", ans: "蠟" },
+    { q: "[ㄉㄨˋ]書蟲", ans: "蠹" },
+    { q: "[ㄅㄢˋ]腳石", ans: "絆" },
+    { q: "雄[ㄐㄧㄡ]赳", ans: "赳" },
+    { q: "消防[ㄕㄨㄢ]", ans: "栓" },
+    { q: "勝敗不[ㄋㄟˇ]", ans: "餒" },
+    { q: "百[ㄓㄜˊ]裙", ans: "褶" },
+    { q: "胡桃[ㄑ一ㄢˊ]", ans: "鉗" },
+    { q: "唇[ㄜˋ]裂", ans: "顎" },
+    { q: "[ㄍㄨㄟ]兔賽跑", ans: "龜" },
+    { q: "風聲[ㄏㄜˋ]唳", ans: "鶴" },
+    { q: "柴米油[ㄧㄢˊ]", ans: "鹽" },
+    { q: "池中[ㄐㄧㄠ]龍", ans: "蛟" },
+    { q: "[ㄐㄧㄢˇ]性電池", ans: "鹼" },
+    { q: "皮膚[ㄧㄡˇ]黑", ans: "黝" },
+    { q: "酒駕[ㄓㄠˋ]逃", ans: "肇" },
+    { q: "[ㄏㄢ]聲如雷", ans: "鼾" },
+    { q: "不落[ㄎㄜ]臼", ans: "窠" },
+    { q: "沆[ㄒㄧㄝˋ]一氣", ans: "瀣" },
+    { q: "世外桃[ㄩㄢˊ]", ans: "源" },
+    { q: "暴[ㄊㄧㄢˇ]天物", ans: "殄" },
+    { q: "滅菌口[ㄓㄠˋ]", ans: "罩" },
+    { q: "[ㄉㄧㄢˋ]汙清白", ans: "玷" },
+    { q: "[ㄎㄨㄞˋ]炙人口", ans: "膾" },
+    { q: "開山[ㄅㄧˊ]祖", ans: "鼻" },
+    { q: "飛揚[ㄅㄚˊ]扈", ans: "跋" },
+    { q: "一[ㄏㄨㄥˊ]清水", ans: "泓" },
+    { q: "和[ㄞˇ]可親", ans: "藹" },
+    { q: "[ㄧㄚˋ]苗助長", ans: "揠" },
+    { q: "[ㄔ]魅魍魎", ans: "魑" },
+    { q: "前[ㄐㄩˋ]後恭", ans: "倨" },
+    { q: "香味[ㄈㄨˋ]郁", ans: "馥" },
+    { q: "[ㄓㄨ]連九族", ans: "株" },
+    { q: "凶年[ㄐㄧ]歲", ans: "饑" },
+    { q: "無[ㄐㄧ]之談", ans: "稽" },
+    { q: "汰[ㄐㄧㄡˋ]換新", ans: "舊" },
+    { q: "原形[ㄅㄧˋ]露", ans: "畢" },
+    { q: "[ㄔㄢˊ]涎欲滴", ans: "饞" },
+    { q: "苦心孤[ㄧˋ]", ans: "詣" },
+    { q: "奮[ㄇㄟˋ]而起", ans: "袂" },
+    { q: "引[ㄐㄧㄡˋ]自責", ans: "咎" },
+    { q: "企業[ㄕㄨ]困", ans: "紓" },
+    { q: "[ㄔㄢˊ]聯冠軍", ans: "蟬" },
+    { q: "作奸犯[ㄎㄜ]", ans: "科" },
+    { q: "懲前[ㄅㄧˋ]後", ans: "毖" },
+    { q: "風靡京[ㄐㄧ]", ans: "畿" },
+    { q: "公孫[ㄅㄨˋ]被", ans: "布" },
+    { q: "望而[ㄑㄩㄝˋ]步", ans: "卻" },
+    { q: "蜂[ㄩㄥˇ]而至", ans: "擁" },
+    { q: "[ㄏㄢˊ]鄲一夢", ans: "邯" },
+    { q: "窮兵[ㄉㄨˊ]武", ans: "黷" },
+    { q: "[ㄐㄧˊ]言厲色", ans: "疾" },
+    { q: "披肝[ㄌㄧˋ]膽", ans: "瀝" },
+    { q: "辛[ㄔㄡˇ]牛年", ans: "丑" },
+    { q: "買[ㄉㄨˊ]還珠", ans: "櫝" },
+    // === 試卷 B (101-200) ===
+    { q: "[ㄧㄣˇ]君子", ans: "癮" },
+    { q: "打牙[ㄐㄧˋ]", ans: "祭" },
+    { q: "[ㄍㄨㄢˋ]洗室", ans: "盥" },
+    { q: "[ㄐㄧㄤ]母鴨", ans: "薑" },
+    { q: "[ㄧㄡˋ]坐器", ans: "宥" },
+    { q: "霓[ㄏㄨㄥˊ]燈", ans: "虹" },
+    { q: "[ㄌㄚˋ]八粥", ans: "臘" },
+    { q: "[ㄓˋ]高點", ans: "制" },
+    { q: "[ㄙㄡ]主意", ans: "餿" },
+    { q: "鞋[ㄒㄩㄢˋ]子", ans: "楦" },
+    { q: "[ㄕㄚˇ]瓜相機", ans: "傻" },
+    { q: "糯米[ㄨㄢˊ]子", ans: "丸" },
+    { q: "家雞野[ㄨˋ]", ans: "騖" },
+    { q: "煙波釣[ㄙㄡˇ]", ans: "叟" },
+    { q: "[ㄘㄨㄟ]枯拉朽", ans: "摧" },
+    { q: "莫[ㄇㄧㄥˊ]其妙", ans: "名" },
+    { q: "令人不[ㄔˇ]", ans: "齒" },
+    { q: "甜嘴[ㄇㄧˋ]舌", ans: "蜜" },
+    { q: "歹戲[ㄊㄨㄛ]棚", ans: "拖" },
+    { q: "發[ㄈㄣˋ]忘食", ans: "憤" },
+    { q: "[ㄕˋ]強欺弱", ans: "恃" },
+    { q: "千[ㄐㄩㄣ]一髮", ans: "鈞" },
+    { q: "[ㄈㄟˋ]腑之言", ans: "肺" },
+    { q: "[ㄉㄧㄥˇ]力相助", ans: "鼎" },
+    { q: "人才[ㄅㄟˋ]出", ans: "輩" },
+    { q: "[ㄉㄞˋ]罪立功", ans: "戴" },
+    { q: "過勿[ㄉㄢˋ]改", ans: "憚" },
+    { q: "濃[ㄩˋ]花香", ans: "郁" },
+    { q: "枕石[ㄕㄨˋ]流", ans: "漱" },
+    { q: "[ㄕ]心自用", ans: "師" },
+    { q: "卑[ㄌㄡˋ]齷齪", ans: "陋" },
+    { q: "平安順[ㄙㄨㄟˋ]", ans: "遂" },
+    { q: "桀[ㄠˊ]不馴", ans: "驁" },
+    { q: "人情[ㄕˋ]故", ans: "世" },
+    { q: "浪[ㄊㄧㄢˊ]波靜", ans: "恬" },
+    { q: "牽牛拔[ㄓㄨㄤ]", ans: "樁" },
+    { q: "七[ㄑㄧㄠˋ]生煙", ans: "竅" },
+    { q: "按[ㄅㄨˋ]就班", ans: "部" },
+    { q: "[ㄅㄢ]師回朝", ans: "班" },
+    { q: "通情達[ㄌㄧˇ]", ans: "理" },
+    { q: "不落[ㄎㄜ]臼", ans: "窠" },
+    { q: "珠算口[ㄐㄩㄝˊ]", ans: "訣" },
+    { q: "[ㄕㄨ]形詭狀", ans: "殊" },
+    { q: "逐[ㄌㄨˋ]中原", ans: "鹿" },
+    { q: "[ㄒㄧㄡ]養生息", ans: "休" },
+    { q: "[ㄌㄧㄝˋ]取功名", ans: "獵" },
+    { q: "[ㄋㄧㄝ]拿分寸", ans: "捏" },
+    { q: "兩腳書[ㄔㄨˊ]", ans: "櫥" },
+    { q: "千刀萬[ㄍㄨㄚˇ]", ans: "剮" },
+    { q: "似劍如[ㄙㄨㄛ]", ans: "梭" },
+    { q: "[ㄑㄧㄣˇ]不能寐", ans: "寢" },
+    { q: "[ㄕㄨ]解旱象", ans: "紓" },
+    { q: "察[ㄧㄢˊ]觀色", ans: "言" },
+    { q: "連珠合[ㄅㄧˋ]", ans: "璧" },
+    { q: "金榜[ㄊㄧˊ]名", ans: "題" },
+    { q: "迫不[ㄐㄧˊ]待", ans: "及" },
+    { q: "白駒過[ㄒㄧˋ]", ans: "隙" },
+    { q: "政簡刑[ㄑㄧㄥ]", ans: "清" },
+    { q: "期[ㄧˊ]之壽", ans: "頤" },
+    { q: "腦力激[ㄉㄤˋ]", ans: "盪" },
+    { q: "[ㄗ]淺望輕", ans: "資" },
+    { q: "[ㄧˋ]念家人", ans: "憶" },
+    { q: "笨口[ㄓㄨㄛˊ]舌", ans: "拙" },
+    { q: "同氣連[ㄓ]", ans: "枝" },
+    { q: "通[ㄆㄢˊ]檢討", ans: "盤" },
+    { q: "[ㄖㄨˊ]苦含辛", ans: "茹" },
+    { q: "[ㄐㄧㄠˇ]情立異", ans: "矯" },
+    { q: "風言[ㄑㄧㄠˋ]語", ans: "俏" },
+    { q: "中流[ㄉㄧˇ]柱", ans: "砥" },
+    { q: "自認倒[ㄇㄟˊ]", ans: "楣" },
+    { q: "驕[ㄐㄧㄣ]自喜", ans: "矜" },
+    { q: "[ㄇㄧㄥˊ]謝惠顧", ans: "銘" },
+    { q: "媒體[ㄆㄧ]露", ans: "披" },
+    { q: "[ㄏㄡˋ]補理事", ans: "候" },
+    { q: "[ㄅㄧˇ]夫之見", ans: "鄙" },
+    { q: "流風餘[ㄗㄜˊ]", ans: "澤" },
+    { q: "真知[ㄓㄨㄛˊ]見", ans: "灼" },
+    { q: "[ㄍㄨㄟˇ]變多端", ans: "詭" },
+    { q: "[ㄅㄢ]回一城", ans: "扳" },
+    { q: "[ㄐㄧㄝˊ]然一身", ans: "孑" },
+    { q: "不[ㄎㄢ]之論", ans: "刊" },
+    { q: "[ㄔㄜˋ]職查辦", ans: "撤" },
+    { q: "分道揚[ㄅㄧㄠ]", ans: "鑣" },
+    { q: "一[ㄘㄨˋ]可幾", ans: "蹴" },
+    { q: "眼明手[ㄐㄧㄝˊ]", ans: "捷" },
+    { q: "魚龍漫[ㄧㄢˇ]", ans: "衍" },
+    { q: "[ㄐㄩㄣˋ]業宏發", ans: "駿" },
+    { q: "指實[ㄓㄤˇ]虛", ans: "掌" },
+    { q: "金城湯[ㄔˊ]", ans: "池" },
+    { q: "三[ㄘㄨㄟ]四請", ans: "催" },
+    { q: "[ㄐㄩㄥˇ]然不同", ans: "迥" },
+    { q: "寸指測[ㄩㄢ]", ans: "淵" },
+    { q: "虎[ㄒㄧㄤˋ]金鈴", ans: "項" },
+    { q: "名實相[ㄎㄜˋ]", ans: "課" },
+    { q: "有典有[ㄗㄜˊ]", ans: "則" },
+    { q: "豐上[ㄖㄨㄟˋ]下", ans: "銳" },
+    { q: "氣[ㄔㄨㄥ]牛斗", "ans": "沖" },
+    { q: "[ㄐㄩㄝˊ]一雌雄", ans: "決" },
+    { q: "恪守[ㄔㄥˊ]規", ans: "成" },
+    { q: "供[ㄒㄩ]失調", ans: "需" },
+    // === 試卷 C (201-300) ===
+    { q: "知書[ㄉㄚˊ]禮", ans: "達" },
+    { q: "[ㄑㄧㄢˊ]能開發", ans: "潛" },
+    { q: "[ㄖㄨㄥˊ]毛葉片", ans: "絨" },
+    { q: "頂禮[ㄇㄛˊ]拜", ans: "膜" },
+    { q: "[ㄑㄩㄢˋ]化人心", ans: "勸" },
+    { q: "[ㄖㄨㄥˊ]通學子", ans: "融" },
+    { q: "精[ㄓㄢˋ]技術", ans: "湛" },
+    { q: "犬牙交[ㄘㄨㄛˋ]", ans: "錯" },
+    { q: "誤入[ㄑㄧˊ]途", ans: "歧" },
+    { q: "[ㄧㄤˊ]長而去", ans: "揚" },
+    { q: "[ㄐㄧㄢ]善天下", ans: "兼" },
+    { q: "心有靈[ㄒㄧ]", ans: "犀" },
+    { q: "疫[ㄑㄧㄥˊ]擴散", ans: "情" },
+    { q: "[ㄓㄨˋ]書說理", ans: "著" },
+    { q: "競相效[ㄈㄤˇ]", ans: "仿" },
+    { q: "素[ㄇㄟˋ]平生", ans: "昧" },
+    { q: "笨口[ㄓㄨㄛˊ]舌", ans: "拙" },
+    { q: "[ㄍㄨㄢˋ]徹始終", ans: "貫" },
+    { q: "出類拔[ㄘㄨㄟˋ]", ans: "萃" },
+    { q: "戒[ㄕㄣˋ]恐懼", ans: "慎" },
+    { q: "吳剛折[ㄍㄨㄟˋ]", ans: "桂" },
+    { q: "天經地[ㄧˋ]", ans: "義" },
+    { q: "怠[ㄉㄨㄛˋ]習氣", ans: "惰" },
+    { q: "切[ㄘㄨㄛ]琢磨", ans: "磋" },
+    { q: "清新俊[ㄧˋ]", ans: "逸" },
+    { q: "腹[ㄅㄟˋ]受敵", ans: "背" },
+    { q: "隱[ㄜˋ]揚善", ans: "惡" },
+    { q: "[ㄐㄧˊ]深", ans: "汲" },
+    { q: "[ㄉㄞˋ]遇合理", ans: "待" },
+    { q: "排[ㄔˋ]行為", ans: "斥" },
+    { q: "[ㄔㄨ]主意", ans: "出" },
+    { q: "[ㄕㄥˇ]自檢點", ans: "省" },
+    { q: "不必拘[ㄋㄧˊ]", ans: "泥" },
+    { q: "人[ㄔㄨˋ]共通", ans: "畜" },
+    { q: "施[ㄅㄨˋ]錢財", ans: "布" },
+    { q: "[ㄇㄠˋ]然行事", ans: "貿" },
+    { q: "[ㄅㄧㄥˇ]持正念", ans: "秉" },
+    { q: "混[ㄒㄧㄠˊ]視聽", ans: "淆" },
+    { q: "狂風[ㄅㄠˋ]雨", ans: "暴" },
+    { q: "剩[ㄩˊ]價值", ans: "餘" },
+    { q: "[ㄏㄠˋ]盡家產", ans: "耗" },
+    { q: "[ㄕㄥˋ]情難卻", ans: "盛" },
+    { q: "斷[ㄩㄢˊ]殘壁", ans: "垣" },
+    { q: "[ㄕㄨㄣˋ]息萬變", ans: "瞬" },
+    { q: "面目可[ㄗㄥ]", ans: "憎" },
+    { q: "令人[ㄉㄨㄥˋ]容", ans: "動" },
+    { q: "金蟬[ㄊㄨㄛ]殼", ans: "脫" },
+    { q: "東扭西[ㄋㄧㄝ]", ans: "捏" },
+    { q: "故態復[ㄇㄥˊ]", ans: "萌" },
+    { q: "工作[ㄍㄤ]位", ans: "崗" },
+    { q: "不理不[ㄘㄞˇ]", ans: "睬" },
+    { q: "天[ㄌㄨㄛˊ]地網", ans: "羅" },
+    { q: "挑逗味[ㄌㄟˇ]", ans: "蕾" },
+    { q: "[ㄔㄢˋ]悔過錯", ans: "懺" },
+    { q: "超[ㄇㄞˋ]絕倫", ans: "邁" },
+    { q: "[ㄌㄧˋ]志文章", ans: "勵" },
+    { q: "[ㄒㄧˊ]武練拳", ans: "習" },
+    { q: "[ㄅㄧㄣ]臨絕種", ans: "瀕" },
+    { q: "[ㄋㄚˋ]印指紋", ans: "捺" },
+    { q: "[ㄐㄧㄝˊ]盡全力", ans: "竭" },
+    { q: "[ㄒㄧㄝˋ]漏情報", ans: "洩" },
+    { q: "[ㄓㄨㄥ]鼓齊鳴", ans: "鐘" },
+    { q: "[ㄧˊ]指氣使", ans: "頤" },
+    { q: "[ㄐㄩ]擊", ans: "狙" },
+    { q: "[ㄕㄨㄛˋ]大無朋", ans: "碩" },
+    { q: "[ㄉㄧㄢˇ]擊瀏覽", ans: "點" },
+    { q: "犯罪幫[ㄒㄩㄥ]", ans: "凶" },
+    { q: "始作[ㄩㄥˇ]者", ans: "俑" },
+    { q: "殘[ㄩㄢˊ]", ans: "垣" },
+    { q: "全部售[ㄑㄧㄥˋ]", ans: "罄" },
+    { q: "物阜民[ㄒㄧ]", ans: "熙" },
+    { q: "危如累[ㄌㄨㄢˇ]", ans: "卵" },
+    { q: "[ㄋㄩㄝˋ]待兒童", ans: "虐" },
+    { q: "重視[ㄧㄣˇ]私", ans: "隱" },
+    { q: "錯[ㄜˋ]不已", ans: "愕" },
+    { q: "殘酷[ㄘㄢˇ]烈", ans: "慘" },
+    { q: "細細[ㄐㄩˇ]嚼", ans: "咀" },
+    { q: "同窗[ㄑㄧˋ]友", ans: "契" },
+    { q: "人生[ㄌㄧˋ]練", ans: "歷" },
+    { q: "[ㄙㄨㄥˋ]讀經典", ans: "誦" },
+    { q: "實彈射[ㄐㄧˊ]", ans: "擊" },
+    { q: "公[ㄓㄨ]於世", ans: "諸" },
+    { q: "以[ㄌㄧˊ]測海", ans: "蠡" },
+    { q: "裁[ㄅㄧㄥˋ]小校", ans: "併" },
+    { q: "[ㄍㄨㄛˇ]足不前", ans: "裹" },
+    { q: "威逼利[ㄧㄡˋ]", ans: "誘" },
+    { q: "舟車勞[ㄉㄨㄣˋ]", ans: "頓" },
+    { q: "[ㄧㄣˋ]刷報紙", ans: "印" },
+    { q: "[ㄧㄢˊ]攬人才", ans: "延" },
+    { q: "[ㄧㄣˇ]瞞事實", ans: "隱" },
+    { q: "歲月洗[ㄌㄧˇ]", ans: "禮" },
+    { q: "冬雨甘[ㄌㄧㄣˊ]", ans: "霖" },
+    { q: "[ㄈㄨˇ]伏身地", ans: "俯" },
+    { q: "[ㄠˋ]視全球", ans: "傲" },
+    { q: "長期累[ㄐㄧ]", ans: "積" },
+    { q: "經濟復[ㄙㄨ]", ans: "甦" },
+    { q: "百般[ㄉㄧㄠ]難", ans: "刁" },
+    { q: "高[ㄙㄨㄥˇ]入雲", ans: "聳" },
+    { q: "動機[ㄔㄨㄣˊ]正", ans: "純" },
+    { q: "百口莫[ㄅㄧㄢˋ]", ans: "辯" }
+];
